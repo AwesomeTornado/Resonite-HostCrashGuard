@@ -33,6 +33,12 @@
 			<HintPath>$(ResonitePath)Resonite_Data\Managed\FrooxEngine.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
+		<Reference Include="Elements.Core">
+			<HintPath>$(ResonitePath)Resonite_Data\Managed\Elements.Core.dll</HintPath>
+		</Reference>
+		<Reference Include="LiteNetLib">
+			<HintPath>$(ResonitePath)Resonite_Data\Managed\LiteNetLib.dll</HintPath>
+		</Reference>
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CopyToMods)'=='true'">
