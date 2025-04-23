@@ -62,7 +62,7 @@ public class HostCrashGuard : ResoniteMod {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
 					Msg("HostCrashGuard: DETECTED CRASH INCOMING!!!!! If not for this mod, it would already be too late.");
 					ohshit = true;
-					return false; //does not runnign the code to close the socket stop the crash?
+					return false;
 				}
 			}
 			return true;
