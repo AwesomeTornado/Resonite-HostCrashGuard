@@ -1,10 +1,7 @@
 using System.Threading.Tasks;
-
 using FrooxEngine;
 using HarmonyLib;
 using ResoniteModLoader;
-
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
