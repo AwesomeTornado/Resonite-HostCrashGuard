@@ -33,6 +33,8 @@ public class HostCrashGuard : ResoniteMod {
 
 		private static bool ohshit = false;
 
+		static Slot slot;
+
 		static bool prefix_PeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			Msg("Prefix from peer disconnected");
 			Warn(string.Concat(new string[]
@@ -49,6 +51,7 @@ public class HostCrashGuard : ResoniteMod {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
 					Msg("DETECTED CRASH INCOMING!!!!! If not for this mod, it would already be too late.");
 					ohshit = true;
+
 					return false;
 				}
 			}
@@ -56,31 +59,14 @@ public class HostCrashGuard : ResoniteMod {
 			
 		}
 
-		[SyncMethod(typeof(Delegate), null)]
-		private void Deny(IButton button, ButtonEventData eventData) {
-			if (base.World != Userspace.UserspaceWorld) {
-				return;
-			}
-			TaskCompletionSource<HostAccessPermission> task = this._task;
-			if (task != null) {
-				task.TrySetResult(HostAccessPermission.Denied);
-			}
-			this._task = null;
-			base.Slot.Destroy();
+		private static void Deny(IButton button, ButtonEventData eventData) {
+			
+			slot.Destroy();
 		}
 
-		// Token: 0x06008250 RID: 33360 RVA: 0x00299925 File Offset: 0x00297B25
-		[SyncMethod(typeof(Delegate), null)]
-		private void Allow(IButton button, ButtonEventData eventData) {
-			if (base.World != Userspace.UserspaceWorld) {
-				return;
-			}
-			TaskCompletionSource<HostAccessPermission> task = this._task;
-			if (task != null) {
-				task.TrySetResult(HostAccessPermission.Allowed);
-			}
-			this._task = null;
-			base.Slot.Destroy();
+		private static void Allow(IButton button, ButtonEventData eventData) {
+			
+			slot.Destroy();
 		}
 
 		static void buildPopupUI(Userspace __instance) {
@@ -88,8 +74,11 @@ public class HostCrashGuard : ResoniteMod {
 				return;//leave as fast as possible so as to not cause lag
 			}
 
+			//HostAccessDialog dialog = __instance.World.RootSlot.AttachComponent<HostAccessDialog>();
+			//dialog.
+
 			
-			Slot slot = __instance.Slot;
+			slot = __instance.Slot;
 			UIBuilder ui = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(400f, 300f), true, true);
 			float3 localScale = slot.LocalScale;
 			slot.LocalScale = (localScale) * 0.001f;
@@ -115,11 +104,11 @@ public class HostCrashGuard : ResoniteMod {
 			UIBuilder uibuilder4 = ui;
 			localeString = "Security.HostAccess.Allow".AsLocaleKey(null, true, null);
 			colorX? colorX = new colorX?(RadiantUI_Constants.Sub.GREEN);
-			Button openButton = uibuilder4.Button(in localeString, in colorX, new ButtonEventHandler(this.Allow), 0f);
+			Button openButton = uibuilder4.Button(in localeString, in colorX, new ButtonEventHandler(Allow), 0f);
 			UIBuilder uibuilder5 = ui;
 			localeString = "Security.HostAccess.Deny".AsLocaleKey(null, true, null);
 			colorX = new colorX?(RadiantUI_Constants.Sub.RED);
-			uibuilder5.Button(in localeString, in colorX, new ButtonEventHandler(this.Deny), 0f);
+			uibuilder5.Button(in localeString, in colorX, new ButtonEventHandler(Deny), 0f);
 			this._allowButton.Target = openButton;
 			/*base.RunInUpdates(2, delegate {
 				Slot temp = base.World.AddSlot("TEMP", true);
