@@ -27,11 +27,9 @@ public class HostCrashGuard : ResoniteMod {
 	public override void OnEngineInit() {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
 		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(PatchMethods), "prefix_PeerDisconnected"));
-		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), postfix: AccessTools.Method(typeof(PatchMethods), "postfix_PeerDisconnected"));
 		harmony.PatchAll();
 	}
 
-	//private async Task RunSessionDownload()
 	class PatchMethods {
 
 		private static bool ohshit = false;
@@ -40,7 +38,7 @@ public class HostCrashGuard : ResoniteMod {
 			Msg("Prefix from peer disconnected");
 			Warn(string.Concat(new string[]
 			{
-				"HostCrashGuard: LNL Connection Disconnected: ",
+				"LNL Connection Disconnected: ",
 				(peer != null) ? peer.ToString() : null,
 				", reason: ",
 				disconnectInfo.Reason.ToString(),
@@ -48,29 +46,15 @@ public class HostCrashGuard : ResoniteMod {
 				disconnectInfo.SocketErrorCode.ToString()
 			}));
 
-			UniLog.Log(string.Concat(new string[]
-			{
-				"HostCrashGuard: LNL Connection Disconnected: ",
-				(peer != null) ? peer.ToString() : null,
-				", reason: ",
-				disconnectInfo.Reason.ToString(),
-				", socketErrorCode: ",
-				disconnectInfo.SocketErrorCode.ToString()
-			}), true);
-
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
-					Msg("HostCrashGuard: DETECTED CRASH INCOMING!!!!! If not for this mod, it would already be too late.");
+					Msg("DETECTED CRASH INCOMING!!!!! If not for this mod, it would already be too late.");
 					ohshit = true;
 					return false;
 				}
 			}
 			return true;
 			
-		}
-
-		static void postfix_PeerDisconnected(LNL_Connection __instance) {
-			Msg("Postfix from peer disconnected");
 		}
 	}
 }
