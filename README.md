@@ -1,5 +1,7 @@
 # ExampleMod
 
+# https://github.com/AwesomeTornado/Resonite-HostCrashGuard/releases/tag/V1.0.0
+
 A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader) mod for [Resonite](https://resonite.com/) that does something.
 <!-- Edit to describe what your mod does and what it may solve -->
 <!-- If your mod solves an issue, you should link to any relevant issues on the resonite github -->
