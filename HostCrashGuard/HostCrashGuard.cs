@@ -16,7 +16,7 @@ using FrooxEngine.UIX;
 namespace HostCrashGuard;
 //More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "1.0.0"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "2.0.0"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
@@ -26,8 +26,6 @@ public class HostCrashGuard : ResoniteMod {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
 		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(PatchMethods), "prefix_PeerDisconnected"));
 		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(PatchMethods), "buildPopupUI"));
-		//harmony.Patch(AccessTools.Method(typeof(Userspace), "OnCommonUpdate"), prefix: AccessTools.Method(typeof(PatchMethods), "cacheUserspace"));
-		harmony.Patch(AccessTools.Method(typeof(UIBuilder), "Arc"), prefix: AccessTools.Method(typeof(PatchMethods), "debugActivatePopup"));
 		harmony.PatchAll();
 	}
 
@@ -37,40 +35,16 @@ public class HostCrashGuard : ResoniteMod {
 
 		static Slot slot;
 
-		static World world;
-
-		/*
-
-		static Userspace userspace;
-
-		static void cacheUserspace(Userspace __instance) {
-			if (userspace is not null || __instance is null) {
-				return;
-			}
-			userspace = __instance;
-		}
-
-		static void debugActivatePopup() {
-			ohshit = true;
-		}
-		*/
-
 		static bool prefix_PeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
-					Msg("DETECTED CRASH INCOMING! If not for this mod, it would already be too late.");
-					world = Traverse.Create(__instance).Field("world").GetValue<World>();
 					ohshit = true;
+					Msg("DETECTED CRASH INCOMING! If not for this mod, it would already be too late.");
 					return false;
 				}
 			}
 			return true;
 
-		}
-
-		private static void ExitWorldDelegate(IButton button, ButtonEventData eventData) {
-			Userspace.ExitWorld(world);
-			slot.Destroy();
 		}
 
 		private static void CloseMenuDelegate(IButton button, ButtonEventData eventData) {
@@ -101,17 +75,11 @@ public class HostCrashGuard : ResoniteMod {
 			UI.NestInto(top);
 			UI.Text("The host of one of your sessions has crashed. HostCrashGuard has stopped this world from closing. Please save any unfinished work and close this world manually.", true, null, true, null);
 			UI.NestInto(bottom);
-			UI.SplitHorizontally(0.5f, out RectTransform left, out RectTransform right, gap);
-			UI.NestInto(left);
-			Button exitWorld = UI.Button("Exit World".AsLocaleKey(), new colorX?(RadiantUI_Constants.Sub.RED));
-			UI.NestInto(right);
 			Button closeMenu = UI.Button("Close Menu".AsLocaleKey(), new colorX?(RadiantUI_Constants.Sub.GREEN));
 
-			exitWorld.LocalPressed += ExitWorldDelegate;
 			closeMenu.LocalPressed += CloseMenuDelegate;
 
 			WarningSlot.PositionInFrontOfUser(float3.Backward, distance: 1f);
-			Msg("Finished");
 		}
 	}
 }
