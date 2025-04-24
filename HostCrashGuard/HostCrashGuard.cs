@@ -56,16 +56,16 @@ public class HostCrashGuard : ResoniteMod {
 				}
 			}
 			return true;
-			
+
 		}
 
 		private static void Deny(IButton button, ButtonEventData eventData) {
-			
+			Msg("Deny button pressed");
 			slot.Destroy();
 		}
 
 		private static void Allow(IButton button, ButtonEventData eventData) {
-			
+			Msg("Allow button pressed");
 			slot.Destroy();
 		}
 
@@ -73,12 +73,13 @@ public class HostCrashGuard : ResoniteMod {
 			if (!ohshit) {
 				return;//leave as fast as possible so as to not cause lag
 			}
-
+			ohshit = false;
 			//HostAccessDialog dialog = __instance.World.RootSlot.AttachComponent<HostAccessDialog>();
 			//dialog.
+			int logNumber = 0;
 
-			
-			slot = __instance.Slot;
+
+			slot = __instance.Slot.FindChild("Userspace").FindChild("Overlay");
 			UIBuilder ui = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(400f, 300f), true, true);
 			float3 localScale = slot.LocalScale;
 			slot.LocalScale = (localScale) * 0.001f;
@@ -109,17 +110,12 @@ public class HostCrashGuard : ResoniteMod {
 			localeString = "Security.HostAccess.Deny".AsLocaleKey(null, true, null);
 			colorX = new colorX?(RadiantUI_Constants.Sub.RED);
 			uibuilder5.Button(in localeString, in colorX, new ButtonEventHandler(Deny), 0f);
-			this._allowButton.Target = openButton;
-			/*base.RunInUpdates(2, delegate {
-				Slot temp = base.World.AddSlot("TEMP", true);
-				temp.GlobalPosition = float3.Up;
-				Slot prevParent = base.Slot.Parent;
-				base.Slot.Parent = temp;
-				base.RunInUpdates(2, delegate {
-					this.Slot.Parent = prevParent;
-					temp.Destroy();
-				});
-			});*/
+			Slot temp = slot.AddSlot("TEMP", true);
+			temp.GlobalPosition = float3.Up;
+			Slot prevParent = slot.Parent;
+			slot.Parent = temp;
+			slot.Parent = prevParent;
+			temp.Destroy();
 		}
 	}
 }
