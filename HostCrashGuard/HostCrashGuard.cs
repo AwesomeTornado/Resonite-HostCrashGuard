@@ -25,7 +25,8 @@ public class HostCrashGuard : ResoniteMod {
 	public override void OnEngineInit() {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
 		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(PatchMethods), "prefix_PeerDisconnected"));
-		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), prefix: AccessTools.Method(typeof(PatchMethods), "buildPopupUI"));
+		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(PatchMethods), "buildPopupUI"));
+		//harmony.Patch(AccessTools.Method(typeof(Userspace), "OnCommonUpdate"), prefix: AccessTools.Method(typeof(PatchMethods), "cacheUserspace"));
 		harmony.Patch(AccessTools.Method(typeof(UIBuilder), "Arc"), prefix: AccessTools.Method(typeof(PatchMethods), "debugActivatePopup"));
 		harmony.PatchAll();
 	}
@@ -38,14 +39,27 @@ public class HostCrashGuard : ResoniteMod {
 
 		static World world;
 
+		/*
+
+		static Userspace userspace;
+
+		static void cacheUserspace(Userspace __instance) {
+			if (userspace is not null || __instance is null) {
+				return;
+			}
+			userspace = __instance;
+		}
+
 		static void debugActivatePopup() {
 			ohshit = true;
 		}
+		*/
 
 		static bool prefix_PeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
 					Msg("DETECTED CRASH INCOMING! If not for this mod, it would already be too late.");
+					world = Traverse.Create(__instance).Field("world").GetValue<World>();
 					ohshit = true;
 					return false;
 				}
@@ -55,7 +69,7 @@ public class HostCrashGuard : ResoniteMod {
 		}
 
 		private static void ExitWorldDelegate(IButton button, ButtonEventData eventData) {
-			Msg("Deny button pressed");
+			Userspace.ExitWorld(world);
 			slot.Destroy();
 		}
 
