@@ -31,7 +31,7 @@ public class HostCrashGuard : ResoniteMod {
 
 	class PatchMethods {
 
-		private static bool ohshit = false;
+		private static bool ohshit = true;
 
 		static Slot slot;
 
@@ -79,10 +79,11 @@ public class HostCrashGuard : ResoniteMod {
 			int logNumber = 0;
 
 
-			slot = __instance.Slot.FindChild("Userspace").FindChild("Overlay");
+			slot = __instance.Slot.World.RootSlot.FindChild("Userspace").FindChild("Overlay").FindChild("Visuals");
+			Msg("Slot: " + slot.ToString());
 			UIBuilder ui = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(400f, 300f), true, true);
 			float3 localScale = slot.LocalScale;
-			slot.LocalScale = (localScale) * 0.001f;
+			slot.LocalScale = (localScale) * 0.00001f;
 			RadiantUI_Constants.SetupEditorStyle(ui, false);
 			ui.VerticalLayout(4f, 0f, null, null, null);
 			ui.Style.MinHeight = 64f;
@@ -110,12 +111,13 @@ public class HostCrashGuard : ResoniteMod {
 			localeString = "Security.HostAccess.Deny".AsLocaleKey(null, true, null);
 			colorX = new colorX?(RadiantUI_Constants.Sub.RED);
 			uibuilder5.Button(in localeString, in colorX, new ButtonEventHandler(Deny), 0f);
-			Slot temp = slot.AddSlot("TEMP", true);
+			Slot temp = slot.World.AddSlot("TEMP", true);
 			temp.GlobalPosition = float3.Up;
 			Slot prevParent = slot.Parent;
 			slot.Parent = temp;
 			slot.Parent = prevParent;
-			temp.Destroy();
+			//temp.Destroy();
+			Msg("Finished");
 		}
 	}
 }
