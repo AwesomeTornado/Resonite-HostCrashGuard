@@ -25,33 +25,28 @@ public class HostCrashGuard : ResoniteMod {
 	public override void OnEngineInit() {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
 		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(PatchMethods), "prefix_PeerDisconnected"));
-		harmony.Patch(AccessTools.Method(typeof(Userspace), "OnCommonUpdate"), prefix: AccessTools.Method(typeof(PatchMethods), "buildPopupUI"));
+		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), prefix: AccessTools.Method(typeof(PatchMethods), "buildPopupUI"));
+		harmony.Patch(AccessTools.Method(typeof(UIBuilder), "Arc"), prefix: AccessTools.Method(typeof(PatchMethods), "debugActivatePopup"));
 		harmony.PatchAll();
 	}
 
 	class PatchMethods {
 
-		private static bool ohshit = true;
+		private static bool ohshit = false;
 
 		static Slot slot;
 
-		static bool prefix_PeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
-			Msg("Prefix from peer disconnected");
-			Warn(string.Concat(new string[]
-			{
-				"LNL Connection Disconnected: ",
-				(peer != null) ? peer.ToString() : null,
-				", reason: ",
-				disconnectInfo.Reason.ToString(),
-				", socketErrorCode: ",
-				disconnectInfo.SocketErrorCode.ToString()
-			}));
+		static World world;
 
+		static void debugActivatePopup() {
+			ohshit = true;
+		}
+
+		static bool prefix_PeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
-					Msg("DETECTED CRASH INCOMING!!!!! If not for this mod, it would already be too late.");
+					Msg("DETECTED CRASH INCOMING! If not for this mod, it would already be too late.");
 					ohshit = true;
-
 					return false;
 				}
 			}
@@ -59,64 +54,49 @@ public class HostCrashGuard : ResoniteMod {
 
 		}
 
-		private static void Deny(IButton button, ButtonEventData eventData) {
+		private static void ExitWorldDelegate(IButton button, ButtonEventData eventData) {
 			Msg("Deny button pressed");
 			slot.Destroy();
 		}
 
-		private static void Allow(IButton button, ButtonEventData eventData) {
-			Msg("Allow button pressed");
+		private static void CloseMenuDelegate(IButton button, ButtonEventData eventData) {
 			slot.Destroy();
 		}
 
-		static void buildPopupUI(Userspace __instance) {
+		static void buildPopupUI(UserRoot __instance) {
 			if (!ohshit) {
 				return;//leave as fast as possible so as to not cause lag
 			}
+			if (__instance.World.Focus is not World.WorldFocus.Focused) {
+				return;//leave if not focused
+			}
 			ohshit = false;
-			//HostAccessDialog dialog = __instance.World.RootSlot.AttachComponent<HostAccessDialog>();
-			//dialog.
-			int logNumber = 0;
 
+			Slot RootSlot = __instance.Slot.World.RootSlot;
+			Slot UserRootSlot = __instance.Slot;
+			Slot WarningSlot = UserRootSlot.AddSlot("Warning", false);
+			WarningSlot.ScaleToUser();
+			WarningSlot.LocalScale *= 0.0005f;
+			slot = WarningSlot;//add reference for later deletion
+			float gap = 0.01f;
+			Msg(RootSlot);
+			UIBuilder UI = RadiantUI_Panel.SetupPanel(WarningSlot, "Host Crash Guard".AsLocaleKey(), new float2(500, 400));
+			RadiantUI_Constants.SetupEditorStyle(UI);
+			UI.SplitVertically(0.85f, out RectTransform top, out RectTransform bottom, gap);
 
-			slot = __instance.Slot.World.RootSlot.FindChild("Userspace").FindChild("Overlay").FindChild("Visuals");
-			Msg("Slot: " + slot.ToString());
-			UIBuilder ui = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(400f, 300f), true, true);
-			float3 localScale = slot.LocalScale;
-			slot.LocalScale = (localScale) * 0.00001f;
-			RadiantUI_Constants.SetupEditorStyle(ui, false);
-			ui.VerticalLayout(4f, 0f, null, null, null);
-			ui.Style.MinHeight = 64f;
-			UIBuilder uibuilder = ui;
-			LocaleString localeString = "The host of this sesson has crashed.";
-			uibuilder.Text(in localeString, true, null, true, null);
-			ui.Style.MinHeight = 32f;
-			Text hostText = new Text();
-			UIBuilder uibuilder2 = ui;
-			localeString = "---";
-			hostText = uibuilder2.Text(in localeString, true, null, true, null);
-			hostText.Color.Value = new colorX(0f, 1f, 1f, 1f, ColorProfile.sRGB);
-			ui.Style.MinHeight = 24f;
-			Text reasonText = new Text();
-			UIBuilder uibuilder3 = ui;
-			localeString = "---";
-			reasonText = uibuilder3.Text(in localeString, true, null, true, null);
-			ui.Style.MinHeight = 32f;
-			ui.HorizontalLayout(4f, 0f, null);
-			UIBuilder uibuilder4 = ui;
-			localeString = "Security.HostAccess.Allow".AsLocaleKey(null, true, null);
-			colorX? colorX = new colorX?(RadiantUI_Constants.Sub.GREEN);
-			Button openButton = uibuilder4.Button(in localeString, in colorX, new ButtonEventHandler(Allow), 0f);
-			UIBuilder uibuilder5 = ui;
-			localeString = "Security.HostAccess.Deny".AsLocaleKey(null, true, null);
-			colorX = new colorX?(RadiantUI_Constants.Sub.RED);
-			uibuilder5.Button(in localeString, in colorX, new ButtonEventHandler(Deny), 0f);
-			Slot temp = slot.World.AddSlot("TEMP", true);
-			temp.GlobalPosition = float3.Up;
-			Slot prevParent = slot.Parent;
-			slot.Parent = temp;
-			slot.Parent = prevParent;
-			//temp.Destroy();
+			UI.NestInto(top);
+			UI.Text("The host of one of your sessions has crashed. HostCrashGuard has stopped this world from closing. Please save any unfinished work and close this world manually.", true, null, true, null);
+			UI.NestInto(bottom);
+			UI.SplitHorizontally(0.5f, out RectTransform left, out RectTransform right, gap);
+			UI.NestInto(left);
+			Button exitWorld = UI.Button("Exit World".AsLocaleKey(), new colorX?(RadiantUI_Constants.Sub.RED));
+			UI.NestInto(right);
+			Button closeMenu = UI.Button("Close Menu".AsLocaleKey(), new colorX?(RadiantUI_Constants.Sub.GREEN));
+
+			exitWorld.LocalPressed += ExitWorldDelegate;
+			closeMenu.LocalPressed += CloseMenuDelegate;
+
+			WarningSlot.PositionInFrontOfUser(float3.Backward, distance: 1f);
 			Msg("Finished");
 		}
 	}
