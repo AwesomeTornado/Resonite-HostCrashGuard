@@ -16,7 +16,7 @@ using FrooxEngine.UIX;
 namespace HostCrashGuard;
 //More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "2.0.0"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "2.0.1"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
@@ -58,6 +58,7 @@ public class HostCrashGuard : ResoniteMod {
 			if (__instance.World.Focus is not World.WorldFocus.Focused) {
 				return;//leave if not focused
 			}
+			if (__instance.LocalUser.LocalUserRoot != __instance) {  return; } //only spawn message on the user who is using the mod.
 			ohshit = false;
 
 			Slot RootSlot = __instance.Slot.World.RootSlot;
