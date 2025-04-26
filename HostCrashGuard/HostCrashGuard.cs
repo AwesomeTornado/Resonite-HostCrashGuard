@@ -58,11 +58,15 @@ public class HostCrashGuard : ResoniteMod {
 			if (__instance.World.Focus is not World.WorldFocus.Focused) {
 				return;//leave if not focused
 			}
-			if (__instance.LocalUser.LocalUserRoot != __instance) {  return; } //only spawn message on the user who is using the mod.
+			if (__instance.LocalUser.UserID != __instance.ActiveUser.UserID) {
+				return;
+			}	
+			UserRoot localUserRoot = __instance.LocalUserRoot;
+			//UserRoot localUserRoot = __instance;
 			ohshit = false;
 
-			Slot RootSlot = __instance.Slot.World.RootSlot;
-			Slot UserRootSlot = __instance.Slot;
+			Slot RootSlot = localUserRoot.Slot.World.RootSlot;
+			Slot UserRootSlot = localUserRoot.Slot;
 			Slot WarningSlot = UserRootSlot.AddSlot("Warning", false);
 			WarningSlot.ScaleToUser();
 			WarningSlot.LocalScale *= 0.0005f;
