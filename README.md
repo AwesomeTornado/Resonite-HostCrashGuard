@@ -1,8 +1,6 @@
-# ExampleMod
+# Host Crash Guard
 
-# https://github.com/AwesomeTornado/Resonite-HostCrashGuard/releases/tag/V1.0.0
-
-A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader) mod for [Resonite](https://resonite.com/) that stops Resonite from crashing when the host crashes. 
+A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader) mod for [Resonite](https://resonite.com/) that stops Resonite from crashing when the host crashes. Instead, a small warning notifies you of what happened, and lets *you* decide when to close the world.
 
 ## Installation
 1. Install [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader).
