@@ -1,25 +1,11 @@
-using System.Threading.Tasks;
 using FrooxEngine;
 using HarmonyLib;
 using ResoniteModLoader;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using Elements.Core;
 using LiteNetLib;
-using LiteNetLib.Utils;
 using FrooxEngine.UIX;
-using System.Diagnostics;
-using System.Reflection;
-using System.Resources;
-using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
-using ProtoFlux.Nodes.Core;
-using System.Runtime.Remoting.Contexts;
-using System.Threading;
 
 namespace HostCrashGuard;
 //More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
