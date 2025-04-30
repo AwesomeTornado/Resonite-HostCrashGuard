@@ -43,6 +43,8 @@ public class HostCrashGuard : ResoniteMod {
 
 		private static bool ohshit = false;
 
+		private static String closeReason = "";
+
 		static Slot slot;
 
 		static bool VarDecMod(Decimal a, Decimal b) {
@@ -62,12 +64,14 @@ public class HostCrashGuard : ResoniteMod {
 				switch (disconnectInfo.Reason) {
 					case DisconnectReason.Timeout:
 						ohshit = true;
-						Msg("The host has taken more than the maximum allowed time to respond, preventing world close.");
+						Msg("The host has taken more than the maximum allowed time to respond, HostCrashGuard is preventing world close.");
+						closeReason = "The network connection has timed out.";
 						return false;
 						break;
 					case DisconnectReason.RemoteConnectionClose:
 						ohshit = true;
-						Msg("The host has closed the connection intentionally, preventing world close.");
+						Msg("The host has closed the connection intentionally, HostCrashGuard is preventing world close.");
+						closeReason = "The host has disconnected from your client.";
 						return false;
 						break;
 				}
@@ -107,7 +111,7 @@ public class HostCrashGuard : ResoniteMod {
 			UI.SplitVertically(0.85f, out RectTransform top, out RectTransform bottom, gap);
 
 			UI.NestInto(top);
-			UI.Text("The host of one of your sessions has crashed. HostCrashGuard has stopped this world from closing. Please save any unfinished work and close this world manually.", true, null, true, null);
+			UI.Text(closeReason + " HostCrashGuard has stopped this world from closing. Please save any unfinished work and close this world manually.", true, null, true, null);
 			UI.NestInto(bottom);
 			Button closeMenu = UI.Button("Close Menu".AsLocaleKey(), new colorX?(RadiantUI_Constants.Sub.GREEN));
 
