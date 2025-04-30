@@ -12,6 +12,14 @@ using Elements.Core;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using FrooxEngine.UIX;
+using System.Diagnostics;
+using System.Reflection;
+using System.Resources;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using ProtoFlux.Nodes.Core;
+using System.Runtime.Remoting.Contexts;
+using System.Threading;
 
 namespace HostCrashGuard;
 //More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
@@ -24,10 +32,12 @@ public class HostCrashGuard : ResoniteMod {
 
 	public override void OnEngineInit() {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
-		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(PatchMethods), "prefix_PeerDisconnected"));
+		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(PatchMethods), "onPeerDisconnected"));
 		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(PatchMethods), "buildPopupUI"));
+		harmony.Patch(AccessTools.Method(typeof(Elements.Core.Coder<Decimal>), "Mod"), prefix: AccessTools.Method(typeof(PatchMethods), "VarDecMod"));
 		harmony.PatchAll();
 	}
+
 
 	class PatchMethods {
 
@@ -35,7 +45,14 @@ public class HostCrashGuard : ResoniteMod {
 
 		static Slot slot;
 
-		static bool prefix_PeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
+		static bool VarDecMod(Decimal a, Decimal b) {
+			if (b == 0) {
+				return false;
+			}
+			return true;
+		}
+
+		static bool onPeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
 					ohshit = true;
@@ -60,7 +77,7 @@ public class HostCrashGuard : ResoniteMod {
 			}
 			if (__instance.LocalUser.UserID != __instance.ActiveUser.UserID) {
 				return;
-			}	
+			}
 			UserRoot localUserRoot = __instance.LocalUserRoot;
 			//UserRoot localUserRoot = __instance;
 			ohshit = false;

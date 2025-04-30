@@ -39,6 +39,12 @@
 		<Reference Include="LiteNetLib">
 			<HintPath>$(ResonitePath)Resonite_Data\Managed\LiteNetLib.dll</HintPath>
 		</Reference>
+		<Reference Include="Protoflux.Nodes.Core">
+			<HintPath>$(ResonitePath)Resonite_Data\Managed\ProtoFlux.Nodes.Core.dll</HintPath>
+		</Reference>
+		<Reference Include="Protoflux.Core">
+			<HintPath>$(ResonitePath)Resonite_Data\Managed\ProtoFlux.Nodes.Core.dll</HintPath>
+		</Reference>
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CopyToMods)'=='true'">
