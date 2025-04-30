@@ -56,8 +56,20 @@ public class HostCrashGuard : ResoniteMod {
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
 					ohshit = true;
-					Msg("DETECTED CRASH INCOMING! If not for this mod, it would already be too late.");
+					Msg("The host has taken more than the maximum allowed time to respond, patching out connection close.");
 					return false;
+				}
+				switch (disconnectInfo.Reason) {
+					case DisconnectReason.Timeout:
+						ohshit = true;
+						Msg("The host has taken more than the maximum allowed time to respond, preventing world close.");
+						return false;
+						break;
+					case DisconnectReason.RemoteConnectionClose:
+						ohshit = true;
+						Msg("The host has closed the connection intentionally, preventing world close.");
+						return false;
+						break;
 				}
 			}
 			return true;
