@@ -121,7 +121,7 @@ public class HostCrashGuard : ResoniteMod {
 			closeMenu.LocalPressed += CloseMenuDelegate;
 
 			WarningSlot.PositionInFrontOfUser(float3.Backward, distance: 1f);
-			Type type;
+			Type type;//TODO remove this
 			
 		}
 	}
