@@ -39,6 +39,9 @@
 		<Reference Include="LiteNetLib">
 			<HintPath>$(ResonitePath)Resonite_Data\Managed\LiteNetLib.dll</HintPath>
 		</Reference>
+		<Reference Include="ProtoFlux.Nodes.FrooxEngine">
+			<HintPath>$(ResonitePath)Resonite_Data\Managed\ProtoFlux.Nodes.FrooxEngine.dll</HintPath>
+		</Reference>
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CopyToMods)'=='true'">

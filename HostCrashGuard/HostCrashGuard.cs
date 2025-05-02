@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using Elements.Core;
 using LiteNetLib;
 using FrooxEngine.UIX;
+using ProtoFlux.Runtimes.Execution.Nodes.Actions;
+using FrooxEngine.ProtoFlux;
 
 namespace HostCrashGuard;
 //More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
@@ -18,27 +20,42 @@ public class HostCrashGuard : ResoniteMod {
 
 	public override void OnEngineInit() {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
-		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(PatchMethods), "onPeerDisconnected"));
-		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(PatchMethods), "buildPopupUI"));
-		harmony.Patch(AccessTools.Method(typeof(Elements.Core.Coder<Decimal>), "Mod"), prefix: AccessTools.Method(typeof(PatchMethods), "VarDecMod"));
+		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(NetworkPatches), "onPeerDisconnected"));
+		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(NetworkPatches), "buildPopupUI"));
+		harmony.Patch(AccessTools.Method(typeof(Elements.Core.Coder<Decimal>), "Mod"), prefix: AccessTools.Method(typeof(GenericTypePatches), "VarDecMod"));
+		harmony.Patch(AccessTools.Method(typeof(Elements.Core.ReflectionExtensions), "IsValidGenericType"), prefix: AccessTools.Method(typeof(GenericTypePatches), "ValueProxy"));
 		harmony.PatchAll();
+		Msg("HostCrashGuard loaded.");
 	}
 
-
-	class PatchMethods {
-
-		private static bool ohshit = false;
-
-		private static String closeReason = "";
-
-		static Slot slot;
-
+	class GenericTypePatches {
 		static bool VarDecMod(Decimal a, Decimal b) {
 			if (b == 0) {
 				return false;
 			}
 			return true;
 		}
+
+		static bool ValueProxy(Type type) {
+			if (type == typeof(ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<SpriteProvider>)) {
+				Msg("Holy shit this just might work.");
+				return false;// Add ohshit = true and define a new error message to explain what happened. Something along the lines of
+				//Someone placed a bugged component, and likely caused a host crash.
+				//maybe something else idk, weird that the network connectio ndidn't catch it.
+			}
+			Msg("ran is valid generic type");
+			return true;
+		}
+	}
+
+
+	class NetworkPatches {
+
+		private static bool ohshit = false;
+
+		private static String closeReason = "";
+
+		static Slot slot;
 
 		static bool onPeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
@@ -104,6 +121,14 @@ public class HostCrashGuard : ResoniteMod {
 			closeMenu.LocalPressed += CloseMenuDelegate;
 
 			WarningSlot.PositionInFrontOfUser(float3.Backward, distance: 1f);
+			Type type;
+			
 		}
 	}
+}
+
+static class ExtensionMethods {
+
+	public static bool IsValidGenericType(this ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<SpriteProvider> instance) =>
+		false;
 }
