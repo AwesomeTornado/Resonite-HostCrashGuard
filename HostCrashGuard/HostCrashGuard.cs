@@ -8,6 +8,9 @@ using LiteNetLib;
 using FrooxEngine.UIX;
 using ProtoFlux.Runtimes.Execution.Nodes.Actions;
 using FrooxEngine.ProtoFlux;
+using System.Linq;
+using System.Collections.Generic;
+using System.Collections;
 
 namespace HostCrashGuard;
 //More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
@@ -23,12 +26,20 @@ public class HostCrashGuard : ResoniteMod {
 		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(NetworkPatches), "onPeerDisconnected"));
 		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(NetworkPatches), "buildPopupUI"));
 		harmony.Patch(AccessTools.Method(typeof(Elements.Core.Coder<Decimal>), "Mod"), prefix: AccessTools.Method(typeof(GenericTypePatches), "VarDecMod"));
-		harmony.Patch(AccessTools.Method(typeof(Elements.Core.ReflectionExtensions), "IsValidGenericType"), prefix: AccessTools.Method(typeof(GenericTypePatches), "ValueProxy"));
+		harmony.Patch(AccessTools.Method(typeof(Elements.Core.ReflectionExtensions), "IsValidGenericType"), postfix: AccessTools.Method(typeof(GenericTypePatches), "CustomGenericTypeValidation"));
+		GenericTypePatches.initMappings();
 		harmony.PatchAll();
 		Msg("HostCrashGuard loaded.");
 	}
 
 	class GenericTypePatches {
+		public static Dictionary<Type, bool> mappings = new Dictionary<Type, bool>();
+
+		public static void initMappings() {
+			mappings.Clear();
+			mappings.Add(typeof(ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<SpriteProvider>), false);
+		}
+
 		static bool VarDecMod(Decimal a, Decimal b) {
 			if (b == 0) {
 				return false;
@@ -36,15 +47,12 @@ public class HostCrashGuard : ResoniteMod {
 			return true;
 		}
 
-		static bool ValueProxy(Type type) {
-			if (type == typeof(ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<SpriteProvider>)) {
-				Msg("Holy shit this just might work.");
-				return false;// Add ohshit = true and define a new error message to explain what happened. Something along the lines of
-				//Someone placed a bugged component, and likely caused a host crash.
-				//maybe something else idk, weird that the network connectio ndidn't catch it.
+		static void CustomGenericTypeValidation(Type type, ref bool __result) {
+			if (!__result) {
+				return;
 			}
-			Msg("ran is valid generic type");
-			return true;
+			mappings.TryGetValue(type, out __result);
+			return;
 		}
 	}
 
@@ -121,14 +129,6 @@ public class HostCrashGuard : ResoniteMod {
 			closeMenu.LocalPressed += CloseMenuDelegate;
 
 			WarningSlot.PositionInFrontOfUser(float3.Backward, distance: 1f);
-			Type type;//TODO remove this
-			
 		}
 	}
-}
-
-static class ExtensionMethods {
-
-	public static bool IsValidGenericType(this ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<SpriteProvider> instance) =>
-		false;
 }
