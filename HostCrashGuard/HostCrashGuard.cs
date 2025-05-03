@@ -11,9 +11,21 @@ using FrooxEngine.ProtoFlux;
 using System.Linq;
 using System.Collections.Generic;
 using System.Collections;
+using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
+
 
 namespace HostCrashGuard;
 //More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
+
+public static class ExtensionMethods {
+
+	public static bool valueproxy<T>(this ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<T> instance) =>
+		Coder<T>.IsEnginePrimitive;
+
+
+}
+
 public class HostCrashGuard : ResoniteMod {
 	internal const string VERSION_CONSTANT = "2.1.1"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
@@ -27,18 +39,11 @@ public class HostCrashGuard : ResoniteMod {
 		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(NetworkPatches), "buildPopupUI"));
 		harmony.Patch(AccessTools.Method(typeof(Elements.Core.Coder<Decimal>), "Mod"), prefix: AccessTools.Method(typeof(GenericTypePatches), "VarDecMod"));
 		harmony.Patch(AccessTools.Method(typeof(Elements.Core.ReflectionExtensions), "IsValidGenericType"), postfix: AccessTools.Method(typeof(GenericTypePatches), "CustomGenericTypeValidation"));
-		GenericTypePatches.initMappings();
 		harmony.PatchAll();
 		Msg("HostCrashGuard loaded.");
 	}
 
 	class GenericTypePatches {
-		public static Dictionary<Type, bool> mappings = new Dictionary<Type, bool>();
-
-		public static void initMappings() {
-			mappings.Clear();
-			mappings.Add(typeof(ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<SpriteProvider>), false);
-		}
 
 		static bool VarDecMod(Decimal a, Decimal b) {
 			if (b == 0) {
@@ -51,7 +56,15 @@ public class HostCrashGuard : ResoniteMod {
 			if (!__result) {
 				return;
 			}
-			mappings.TryGetValue(type, out __result);
+			//mappings.TryGetValue(type, out __result);
+			PropertyInfo field = type.GetProperty("IsValidGenericType");
+			if (field == null) {
+				Msg(type.ToString());
+				return;
+				//return true;
+			}
+			object result = field.GetValue(null);
+			__result = result is bool && (bool)result;
 			return;
 		}
 	}
