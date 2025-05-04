@@ -55,27 +55,26 @@ public class HostCrashGuard : ResoniteMod {
 			var w = Userspace.UserspaceWorld;
 
 			w.RunSynchronously(() => {
-				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog", false);
-				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(400f, 400f), pinButton: false);
+				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog");
+				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 200f), pinButton: false);
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;
 				uIBuilder.Text(reason + " HostCrashGuard has stopped " + world.Name + " from closing. Please save any unfinished work and close this world.");
-				uIBuilder.HorizontalLayout(4f, 4f);
-				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED), action: exitWorld(world));
-				uIBuilder.Button("Close Menu", new colorX?(RadiantUI_Constants.Sub.RED), action: closeMenu(slot));
+				uIBuilder.HorizontalLayout(4f);
+				ButtonEventHandler exitWorld = (IButton button, ButtonEventData eventData) => {
+					Userspace.ExitWorld(world);
+					slot.Destroy();
+				};
+				ButtonEventHandler closeMenu = (IButton button, ButtonEventData eventData) =>
+					slot.Destroy();
+				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED), action: exitWorld);
+				uIBuilder.Button("Close Menu", new colorX?(RadiantUI_Constants.Sub.RED), action: closeMenu);
 
 				slot.PositionInFrontOfUser(float3.Backward, null, 0.6f);
 				slot.LocalScale *= 0.001f;
 			});
 		}
 
-		private static ButtonEventHandler exitWorld(World world) =>
-			(IButton button, ButtonEventData eventData) =>
-				Userspace.ExitWorld(world);
-
-		private static ButtonEventHandler closeMenu(Slot slot) =>
-			(IButton button, ButtonEventData eventData) =>
-				slot.Destroy();
 	}
 }
