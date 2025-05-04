@@ -6,13 +6,7 @@ using System.Net.Sockets;
 using Elements.Core;
 using LiteNetLib;
 using FrooxEngine.UIX;
-using ProtoFlux.Runtimes.Execution.Nodes.Actions;
-using FrooxEngine.ProtoFlux;
-using System.Linq;
-using System.Collections.Generic;
-using System.Collections;
 using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
 
 
 namespace HostCrashGuard;
@@ -22,8 +16,6 @@ public static class ExtensionMethods {
 
 	public static bool valueproxy<T>(this ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<T> instance) =>
 		Coder<T>.IsEnginePrimitive;
-
-
 }
 
 public class HostCrashGuard : ResoniteMod {
@@ -35,24 +27,24 @@ public class HostCrashGuard : ResoniteMod {
 
 	public override void OnEngineInit() {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
-		harmony.Patch(AccessTools.Method(typeof(LNL_Connection), "OnPeerDisconnected"), prefix: AccessTools.Method(typeof(NetworkPatches), "onPeerDisconnected"));
-		harmony.Patch(AccessTools.Method(typeof(UserRoot), "OnCommonUpdate"), postfix: AccessTools.Method(typeof(NetworkPatches), "buildPopupUI"));
-		harmony.Patch(AccessTools.Method(typeof(Elements.Core.Coder<Decimal>), "Mod"), prefix: AccessTools.Method(typeof(GenericTypePatches), "VarDecMod"));
-		harmony.Patch(AccessTools.Method(typeof(Elements.Core.ReflectionExtensions), "IsValidGenericType"), postfix: AccessTools.Method(typeof(GenericTypePatches), "CustomGenericTypeValidation"));
 		harmony.PatchAll();
 		Msg("HostCrashGuard loaded.");
 	}
 
-	class GenericTypePatches {
-
-		static bool VarDecMod(Decimal a, Decimal b) {
-			if (b == 0) {
+	[HarmonyPatch(typeof(Coder<decimal>), nameof(Coder<decimal>.CanDivide))]
+	class DecimalDivZeroPatch {
+		static bool Prefix(decimal dividend, decimal divisor, ref bool __result) {
+			if (divisor == 0) {
+				__result = false;
 				return false;
 			}
 			return true;
 		}
+	}
 
-		static void CustomGenericTypeValidation(Type type, ref bool __result) {
+	[HarmonyPatch(typeof(ReflectionExtensions), nameof(ReflectionExtensions.IsValidGenericType))]
+	class TypeValidationPatch {
+		static void Postfix(Type type, ref bool __result) {
 			if (!__result) {
 				return;
 			}
@@ -67,81 +59,37 @@ public class HostCrashGuard : ResoniteMod {
 			__result = result is bool && (bool)result;
 			return;
 		}
-	}
+	}	
 
-
-	class NetworkPatches {
-
-		private static bool ohshit = false;
-
-		private static String closeReason = "";
-
-		static Slot slot;
-
-		static bool onPeerDisconnected(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
+	[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
+	class PeerDisconnectedPatch {
+		static bool Prefix(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
-					ohshit = true;
-					Msg("The host has taken more than the maximum allowed time to respond, patching out connection close.");
+					Fail("The network connection has timed out.");
 					return false;
-				}
-				switch (disconnectInfo.Reason) {
-					case DisconnectReason.Timeout:
-						ohshit = true;
-						Msg("The host has taken more than the maximum allowed time to respond, HostCrashGuard is preventing world close.");
-						closeReason = "The network connection has timed out.";
-						return false;
-						break;
-					case DisconnectReason.RemoteConnectionClose:
-						ohshit = true;
-						Msg("The host has closed the connection intentionally, HostCrashGuard is preventing world close.");
-						closeReason = "The host has disconnected from your client.";
-						return false;
-						break;
+				} else if (disconnectInfo.Reason == DisconnectReason.RemoteConnectionClose) {
+					Fail("The host has disconnected from your client.");
+					return false;
 				}
 			}
 			return true;
-
 		}
 
-		private static void CloseMenuDelegate(IButton button, ButtonEventData eventData) {
-			slot.Destroy();
-		}
+		static void Fail(string reason) {
+			Msg("Prevented world close with reason: " + reason);
+			var w = Userspace.UserspaceWorld;
+			w.RunSynchronously(() => {
+				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog");
+				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 200f), pinButton: false);
+				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
+				uIBuilder.VerticalLayout(4f);
+				uIBuilder.Style.MinHeight = 24f;
+				uIBuilder.Text(reason + " HostCrashGuard has stopped this world from closing. Please save any unfinished work and close this world manually.");
 
-		static void buildPopupUI(UserRoot __instance) {
-			if (!ohshit) {
-				return;//leave as fast as possible so as to not cause lag
-			}
-			if (__instance.World.Focus is not World.WorldFocus.Focused) {
-				return;//leave if not focused
-			}
-			if (__instance.LocalUser.UserID != __instance.ActiveUser.UserID) {
-				return;
-			}
-			UserRoot localUserRoot = __instance.LocalUserRoot;
-			//UserRoot localUserRoot = __instance;
-			ohshit = false;
-
-			Slot RootSlot = localUserRoot.Slot.World.RootSlot;
-			Slot UserRootSlot = localUserRoot.Slot;
-			Slot WarningSlot = UserRootSlot.AddSlot("Warning", false);
-			WarningSlot.ScaleToUser();
-			WarningSlot.LocalScale *= 0.0005f;
-			slot = WarningSlot;//add reference for later deletion
-			float gap = 0.01f;
-			Msg(RootSlot);
-			UIBuilder UI = RadiantUI_Panel.SetupPanel(WarningSlot, "Host Crash Guard".AsLocaleKey(), new float2(500, 400));
-			RadiantUI_Constants.SetupEditorStyle(UI);
-			UI.SplitVertically(0.85f, out RectTransform top, out RectTransform bottom, gap);
-
-			UI.NestInto(top);
-			UI.Text(closeReason + " HostCrashGuard has stopped this world from closing. Please save any unfinished work and close this world manually.", true, null, true, null);
-			UI.NestInto(bottom);
-			Button closeMenu = UI.Button("Close Menu".AsLocaleKey(), new colorX?(RadiantUI_Constants.Sub.GREEN));
-
-			closeMenu.LocalPressed += CloseMenuDelegate;
-
-			WarningSlot.PositionInFrontOfUser(float3.Backward, distance: 1f);
+				slot.PositionInFrontOfUser(float3.Backward, null, 0.6f);
+				slot.LocalScale *= 0.001f;
+			});
 		}
 	}
 }
