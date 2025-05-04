@@ -8,15 +8,7 @@ using LiteNetLib;
 using FrooxEngine.UIX;
 using System.Reflection;
 
-
 namespace HostCrashGuard;
-//More info on creating mods can be found https://github.com/resonite-modding-group/ResoniteModLoader/wiki/Creating-Mods
-
-public static class ExtensionMethods {
-
-	public static bool valueproxy<T>(this ProtoFlux.Runtimes.Execution.Nodes.Actions.ValueProxy<T> instance) =>
-		Coder<T>.IsEnginePrimitive;
-}
 
 public class HostCrashGuard : ResoniteMod {
 	internal const string VERSION_CONSTANT = "2.1.1"; //Changing the version here updates it in all locations needed
@@ -41,25 +33,6 @@ public class HostCrashGuard : ResoniteMod {
 			return true;
 		}
 	}
-
-	[HarmonyPatch(typeof(ReflectionExtensions), nameof(ReflectionExtensions.IsValidGenericType))]
-	class TypeValidationPatch {
-		static void Postfix(Type type, ref bool __result) {
-			if (!__result) {
-				return;
-			}
-			//mappings.TryGetValue(type, out __result);
-			PropertyInfo field = type.GetProperty("IsValidGenericType");
-			if (field == null) {
-				Msg(type.ToString());
-				return;
-				//return true;
-			}
-			object result = field.GetValue(null);
-			__result = result is bool && (bool)result;
-			return;
-		}
-	}	
 
 	[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
 	class PeerDisconnectedPatch {
