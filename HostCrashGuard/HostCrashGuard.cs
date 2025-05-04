@@ -37,32 +37,45 @@ public class HostCrashGuard : ResoniteMod {
 	[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
 	class PeerDisconnectedPatch {
 		static bool Prefix(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
+			World world = Traverse.Create(__instance).Field("world").GetValue<World>();
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
-					Fail("The network connection has timed out.");
+					Fail("The network connection has timed out.", world);
 					return false;
 				} else if (disconnectInfo.Reason == DisconnectReason.RemoteConnectionClose) {
-					Fail("The host has disconnected from your client.");
+					Fail("The host has disconnected from your client.", world);
 					return false;
 				}
 			}
 			return true;
 		}
 
-		static void Fail(string reason) {
+		static void Fail(string reason, World world) {
 			Msg("Prevented world close with reason: " + reason);
 			var w = Userspace.UserspaceWorld;
+
 			w.RunSynchronously(() => {
-				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog");
-				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 200f), pinButton: false);
+				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog", false);
+				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(400f, 400f), pinButton: false);
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;
-				uIBuilder.Text(reason + " HostCrashGuard has stopped this world from closing. Please save any unfinished work and close this world manually.");
+				uIBuilder.Text(reason + " HostCrashGuard has stopped " + world.Name + " from closing. Please save any unfinished work and close this world.");
+				uIBuilder.HorizontalLayout(4f, 4f);
+				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED), action: exitWorld(world));
+				uIBuilder.Button("Close Menu", new colorX?(RadiantUI_Constants.Sub.RED), action: closeMenu(slot));
 
 				slot.PositionInFrontOfUser(float3.Backward, null, 0.6f);
 				slot.LocalScale *= 0.001f;
 			});
 		}
+
+		private static ButtonEventHandler exitWorld(World world) =>
+			(IButton button, ButtonEventData eventData) =>
+				Userspace.ExitWorld(world);
+
+		private static ButtonEventHandler closeMenu(Slot slot) =>
+			(IButton button, ButtonEventData eventData) =>
+				slot.Destroy();
 	}
 }
