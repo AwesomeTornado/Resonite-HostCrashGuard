@@ -1,17 +1,15 @@
 using FrooxEngine;
 using HarmonyLib;
 using ResoniteModLoader;
-using System;
 using System.Net.Sockets;
 using Elements.Core;
 using LiteNetLib;
 using FrooxEngine.UIX;
-using System.Reflection;
 
 namespace HostCrashGuard;
 
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "2.1.1"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "2.2.0"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
@@ -55,8 +53,8 @@ public class HostCrashGuard : ResoniteMod {
 			var w = Userspace.UserspaceWorld;
 
 			w.RunSynchronously(() => {
-				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog");
-				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 300f), pinButton: false);
+				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog", false);
+				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 250f), pinButton: false);
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;
