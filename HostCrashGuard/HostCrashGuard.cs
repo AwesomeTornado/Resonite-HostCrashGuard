@@ -56,34 +56,25 @@ public class HostCrashGuard : ResoniteMod {
 
 			w.RunSynchronously(() => {
 				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog");
-				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 200f), pinButton: false);
+				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 300f), pinButton: false);
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;
 				uIBuilder.Text(reason + " HostCrashGuard has stopped " + world.Name + " from closing. Please save any unfinished work and close this world.");
-				/*
-				 * I was unable to get this code working
-				 * It is supposed to add two buttons at the bottom of the menu, one to close the world, the other to close the prompt.
-				 * For whatever reason, this reparents the slot and screws stuff up while in userspace.*/
 				uIBuilder.HorizontalLayout(4f);
 
-				UIBuilder ui2 = uIBuilder;
-				ui2.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED), action: exitWorld(world, slot));
-				ui2.Button("Close Menu", new colorX?(RadiantUI_Constants.Sub.GREEN), action: closeMenu(slot));
+				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED)).LocalPressed +=
+				(IButton button, ButtonEventData eventData) => {
+					Userspace.ExitWorld(world);
+					slot.Destroy();
+				};
+				uIBuilder.Button("Close Menu", new colorX?(RadiantUI_Constants.Sub.GREEN)).LocalPressed +=
+				(IButton button, ButtonEventData eventData) => slot.Destroy();
+
 				slot.PositionInFrontOfUser(float3.Backward, null, 0.6f);
 				slot.LocalScale *= 0.001f;
 			});
 		}
-
-		static ButtonEventHandler exitWorld(World world, Slot slot) =>
-			(IButton button, ButtonEventData eventData) => {
-				Userspace.ExitWorld(world);
-				slot.Destroy();
-			};
-
-		static ButtonEventHandler closeMenu(Slot slot) =>
-			(IButton button, ButtonEventData eventData) =>
-				slot.Destroy();
 
 	}
 }
