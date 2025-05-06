@@ -16,13 +16,13 @@ public class HostCrashGuard : ResoniteMod {
 	public override string Link => "https://github.com/AwesomeTornado/Resonite-HostCrashGuard";
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> NetworkPatchesEnabled = new ModConfigurationKey<bool>("Network Patches", "Enables/Disables all network crash fixes of this mod.", () => true);
+	private static readonly ModConfigurationKey<bool> NetworkPatchesEnabled = new ModConfigurationKey<bool>("Network Patches", "Enable all network crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> CatchTimeouts = new ModConfigurationKey<bool>("Catch Timeouts", "Stops network timeouts from closing the world. (host crash, network instability)", () => true);
+	private static readonly ModConfigurationKey<bool> CatchTimeouts = new ModConfigurationKey<bool>("Catch Timeouts", "Stop network timeouts from closing the world. (Host crash, network instability)", () => true);
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> CatchHostDisconnect = new ModConfigurationKey<bool>("Catch Host Disconnects", "Stops remote disconnections from closing the world. (kicks, some crashes)", () => true);
+	private static readonly ModConfigurationKey<bool> CatchHostDisconnect = new ModConfigurationKey<bool>("Catch Host Disconnects", "Stop remote disconnections from closing the world. (Kicks, some crashes)", () => true);
 
 	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<float2> DialogSize = new ModConfigurationKey<float2>("Popup Size", "Changes the size of the network error popup.", () => new float2(300f, 250f));
