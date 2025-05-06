@@ -15,7 +15,22 @@ public class HostCrashGuard : ResoniteMod {
 	public override string Version => VERSION_CONSTANT;
 	public override string Link => "https://github.com/AwesomeTornado/Resonite-HostCrashGuard";
 
+	[AutoRegisterConfigKey]
+	private static readonly ModConfigurationKey<bool> NetworkPatchesEnabled = new ModConfigurationKey<bool>("Network Patches", "Enable all network crash fixes of this mod.", () => true);
+
+	[AutoRegisterConfigKey]
+	private static readonly ModConfigurationKey<bool> CatchTimeouts = new ModConfigurationKey<bool>("Catch Timeouts", "Stop network timeouts from closing the world. (Host crash, network instability)", () => true);
+
+	[AutoRegisterConfigKey]
+	private static readonly ModConfigurationKey<bool> CatchHostDisconnect = new ModConfigurationKey<bool>("Catch Host Disconnects", "Stop remote disconnections from closing the world. (Kicks, some crashes)", () => true);
+
+	[AutoRegisterConfigKey]
+	private static readonly ModConfigurationKey<float2> DialogSize = new ModConfigurationKey<float2>("Popup Size", "Changes the size of the network error popup.", () => new float2(300f, 250f));
+
+	private static ModConfiguration Config;
+
 	public override void OnEngineInit() {
+		Config = GetConfiguration();
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
 		harmony.PatchAll();
 		Msg("HostCrashGuard loaded.");
@@ -35,12 +50,15 @@ public class HostCrashGuard : ResoniteMod {
 	[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
 	class PeerDisconnectedPatch {
 		static bool Prefix(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
+			if (!Config.GetValue(NetworkPatchesEnabled)) {
+				return true;
+			}
 			World world = Traverse.Create(__instance).Field("world").GetValue<World>();
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
-				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
+				if (disconnectInfo.Reason == DisconnectReason.Timeout && Config.GetValue(CatchTimeouts)) {
 					Fail("The network connection has timed out.", world);
 					return false;
-				} else if (disconnectInfo.Reason == DisconnectReason.RemoteConnectionClose) {
+				} else if (disconnectInfo.Reason == DisconnectReason.RemoteConnectionClose && Config.GetValue(CatchHostDisconnect)) {
 					Fail("The host has disconnected from your client.", world);
 					return false;
 				}
@@ -54,7 +72,7 @@ public class HostCrashGuard : ResoniteMod {
 
 			w.RunSynchronously(() => {
 				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog", false);
-				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", new float2(300f, 250f), pinButton: false);
+				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", Config.GetValue(DialogSize), pinButton: false);
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;
