@@ -8,6 +8,7 @@ using FrooxEngine.UIX;
 using System;
 using System.Reflection;
 using System.Xml.Linq;
+using System.Collections.Generic;
 
 namespace HostCrashGuard;
 
@@ -56,18 +57,23 @@ public class HostCrashGuard : ResoniteMod {
 			Msg(Environment.StackTrace);
 			Msg("This is the start of the function");
 			Msg("for (int i = 0; i < worker.SyncMemberCount; i++) {");
-			for (int i = 0; i < worker.SyncMemberCount; i++) {
-				Msg("ISyncMember member = worker.GetSyncMember(i);");
-				ISyncMember member = worker.GetSyncMember(i);
-				Msg("if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {");
-				if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {
-					Msg("SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);");
-					Msg("i is " + i);
-					Msg("SyncMember is " + worker.GetSyncMemberName(i));
-					Msg("FieldInfo is " + worker.GetSyncMemberFieldInfo(i).ToString());
-					SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);
-					Msg("past Build function");
+			try {
+				for (int i = 0; i < worker.SyncMemberCount; i++) {
+					Msg("ISyncMember member = worker.GetSyncMember(i);");
+					ISyncMember member = worker.GetSyncMember(i);
+					Msg("if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {");
+					if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {
+						Msg("SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);");
+						Msg("i is " + i);
+						Msg("SyncMember is " + worker.GetSyncMemberName(i));
+						Msg("FieldInfo is " + worker.GetSyncMemberFieldInfo(i).ToString());
+						SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);
+						Msg("past Build function");
+					}
 				}
+			} catch (Exception e) {
+				Msg(e.ToString());
+				return false;
 			}
 			Msg("for (int j = 0; j < worker.SyncMethodCount; j++) {");
 			for (int j = 0; j < worker.SyncMethodCount; j++) {
@@ -95,13 +101,14 @@ public class HostCrashGuard : ResoniteMod {
 	class InvalidComponentPatch_2 {
 		//public static void Build(ISyncMember member, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize = 0.3f)
 		static void Prefix(ISyncMember member, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize = 0.3f) {
+			Msg(member.ToString() + name + fieldInfo.Name + fieldInfo.FieldType.ToString() + fieldInfo.ToString() + ui.ToString() +  labelSize.ToString());
 			Msg("	SectionAttribute section = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<SectionAttribute>() : null);");
 			SectionAttribute section = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<SectionAttribute>() : null);
 			Msg("	SyncObject syncObject = member as SyncObject;");
 			SyncObject syncObject = member as SyncObject;
 			Msg("	if (syncObject != null) {");
 			if (syncObject != null) {
-				Msg("	return");
+				Msg("		return");
 				//SyncMemberEditorBuilder.BuildSyncObject(syncObject, name, fieldInfo, ui, labelSize);
 				return;
 			}
@@ -109,7 +116,7 @@ public class HostCrashGuard : ResoniteMod {
 			IField field = member as IField;
 			Msg("	if (field != null) {");
 			if (field != null) {
-				Msg("	return");
+				Msg("		return, most common crash here.");
 				//SyncMemberEditorBuilder.BuildField(field, name, fieldInfo, ui, labelSize);
 				return;
 			}
@@ -117,7 +124,7 @@ public class HostCrashGuard : ResoniteMod {
 			SyncPlayback playback = member as SyncPlayback;
 			Msg("	if (playback != null) {");
 			if (playback != null) {
-				Msg("	return");
+				Msg("		return");
 				//SyncMemberEditorBuilder.BuildPlayback(playback, name, fieldInfo, ui, labelSize);
 				return;
 			}
@@ -125,7 +132,7 @@ public class HostCrashGuard : ResoniteMod {
 			ISyncList list = member as ISyncList;
 			Msg("	if (list != null) {");
 			if (list != null) {
-				Msg("	return");
+				Msg("		return");
 				//SyncMemberEditorBuilder.BuildList(list, name, fieldInfo, ui);
 				return;
 			}
@@ -133,7 +140,7 @@ public class HostCrashGuard : ResoniteMod {
 			ISyncBag bag = member as ISyncBag;
 			Msg("	if (bag != null) {");
 			if (bag != null) {
-				Msg("	return");
+				Msg("		return");
 				//SyncMemberEditorBuilder.BuildBag(bag, name, fieldInfo, ui);
 				return;
 			}
@@ -141,7 +148,7 @@ public class HostCrashGuard : ResoniteMod {
 			ISyncArray array = member as ISyncArray;
 			Msg("	if (array != null) {");
 			if (array != null) {
-				Msg("	return");
+				Msg("		return");
 				//SyncMemberEditorBuilder.BuildArray(array, name, fieldInfo, ui, labelSize);
 				return;
 			}
@@ -149,10 +156,57 @@ public class HostCrashGuard : ResoniteMod {
 			EmptySyncElement empty = member as EmptySyncElement;
 			Msg("	if (empty == null) {");
 			if (empty == null) {
-				Msg("	return (null)");
+				Msg("		return (null)");
 				return;
 			}
 			Msg("	return");
+		}
+	}
+
+	[HarmonyPatch(typeof(SyncMemberEditorBuilder), nameof(SyncMemberEditorBuilder.BuildField), new Type[] { typeof(IField), typeof(string), typeof(FieldInfo), typeof(UIBuilder), typeof(float) })]
+	class InvalidComponentPatch_3 {
+		static void Prefix(IField field, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize) {
+			Msg("			BuildField Function Entered");
+			bool isMatrixType = field.ValueType.IsMatrixType();
+			bool isSHtype = field.ValueType.IsSphericalHarmonicsType();
+			if (isMatrixType) {
+				int2 dimensions = field.ValueType.GetMatrixDimensions();
+				
+			} else if (isSHtype) {
+				Type type = field.ValueType.GetGenericArguments()[0];
+				float size = 24f;
+				if (type == typeof(colorX)) {
+					size = 48f;
+				}
+				int coefficients = field.ValueType.GetSphericalHarmonicsCoefficientCount();
+				
+			}
+			AssetRef<ITexture2D> texRef = field as AssetRef<ITexture2D>;
+			if (texRef == null) {
+				ISyncDelegate syncDelegate = field as ISyncDelegate;
+				if (syncDelegate == null) {
+					ISyncRef syncRef = field as ISyncRef;
+					if (syncRef == null) {
+						if (isMatrixType) {
+							Msg("MatrixType");
+						} else if (isSHtype) {
+							Msg("SH type");
+						} else {
+							Msg("BAD, RECURSION!");
+						}
+					}
+				}
+			}
+		}
+	}
+	//private static void BuildMemberEditors(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true)
+
+	[HarmonyPatch(typeof(SyncMemberEditorBuilder), "BuildMemberEditors")]
+	class InvalidComponentPatch_4 {
+		static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
+			Msg("Start of BuildMemberEditors");
+			Msg(fieldInfo.Name.ToString() + " " + path);
+			return !(path.Length > 1000);
 		}
 	}
 
@@ -172,6 +226,7 @@ public class HostCrashGuard : ResoniteMod {
 					return false;
 				}*/
 			}
+		
 			return true;
 		}
 
