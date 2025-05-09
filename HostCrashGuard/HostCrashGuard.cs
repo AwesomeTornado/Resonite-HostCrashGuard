@@ -5,6 +5,9 @@ using System.Net.Sockets;
 using Elements.Core;
 using LiteNetLib;
 using FrooxEngine.UIX;
+using System;
+using System.Reflection;
+using System.Xml.Linq;
 
 namespace HostCrashGuard;
 
@@ -44,7 +47,116 @@ public class HostCrashGuard : ResoniteMod {
 		}
 	}
 
-	[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
+	//// Token: 0x06002BB8 RID: 11192 RVA: 0x000C52F0 File Offset: 0x000C34F0
+	//public static void BuildInspectorUI(Worker worker, UIBuilder ui, Predicate<ISyncMember> memberFilter = null)
+
+	[HarmonyPatch(typeof(WorkerInspector), nameof(WorkerInspector.BuildInspectorUI))]
+	class InvalidComponentPatch {
+		static bool Prefix(WorkerInspector __instance, Worker worker, UIBuilder ui, Predicate<ISyncMember> memberFilter = null) {
+			Msg(Environment.StackTrace);
+			Msg("This is the start of the function");
+			Msg("for (int i = 0; i < worker.SyncMemberCount; i++) {");
+			for (int i = 0; i < worker.SyncMemberCount; i++) {
+				Msg("ISyncMember member = worker.GetSyncMember(i);");
+				ISyncMember member = worker.GetSyncMember(i);
+				Msg("if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {");
+				if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {
+					Msg("SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);");
+					Msg("i is " + i);
+					Msg("SyncMember is " + worker.GetSyncMemberName(i));
+					Msg("FieldInfo is " + worker.GetSyncMemberFieldInfo(i).ToString());
+					SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);
+					Msg("past Build function");
+				}
+			}
+			Msg("for (int j = 0; j < worker.SyncMethodCount; j++) {");
+			for (int j = 0; j < worker.SyncMethodCount; j++) {
+				Msg("SyncMethodInfo info;");
+				SyncMethodInfo info;
+				Msg("Delegate method;");
+				Delegate method;
+				Msg("worker.GetSyncMethodData(j, out info, out method);");
+				worker.GetSyncMethodData(j, out info, out method);
+				Msg("if (method != null) {");
+				if (method != null) {
+					//SyncMemberEditorBuilder.BuildSyncMethod(method, info.methodType, info.method, ui);
+					Msg("That one line got called");
+				}
+			}
+			Msg("Skipping original function");
+			return false;
+		}
+		static void Postfix() {
+			Msg(Environment.StackTrace);
+			Msg("This is the end of the function");
+		}
+	}
+	[HarmonyPatch(typeof(SyncMemberEditorBuilder), nameof(SyncMemberEditorBuilder.Build))]
+	class InvalidComponentPatch_2 {
+		//public static void Build(ISyncMember member, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize = 0.3f)
+		static void Prefix(ISyncMember member, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize = 0.3f) {
+			Msg("	SectionAttribute section = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<SectionAttribute>() : null);");
+			SectionAttribute section = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<SectionAttribute>() : null);
+			Msg("	SyncObject syncObject = member as SyncObject;");
+			SyncObject syncObject = member as SyncObject;
+			Msg("	if (syncObject != null) {");
+			if (syncObject != null) {
+				Msg("	return");
+				//SyncMemberEditorBuilder.BuildSyncObject(syncObject, name, fieldInfo, ui, labelSize);
+				return;
+			}
+			Msg("	IField field = member as IField;");
+			IField field = member as IField;
+			Msg("	if (field != null) {");
+			if (field != null) {
+				Msg("	return");
+				//SyncMemberEditorBuilder.BuildField(field, name, fieldInfo, ui, labelSize);
+				return;
+			}
+			Msg("	SyncPlayback playback = member as SyncPlayback;");
+			SyncPlayback playback = member as SyncPlayback;
+			Msg("	if (playback != null) {");
+			if (playback != null) {
+				Msg("	return");
+				//SyncMemberEditorBuilder.BuildPlayback(playback, name, fieldInfo, ui, labelSize);
+				return;
+			}
+			Msg("	ISyncList list = member as ISyncList;");
+			ISyncList list = member as ISyncList;
+			Msg("	if (list != null) {");
+			if (list != null) {
+				Msg("	return");
+				//SyncMemberEditorBuilder.BuildList(list, name, fieldInfo, ui);
+				return;
+			}
+			Msg("	ISyncBag bag = member as ISyncBag;");
+			ISyncBag bag = member as ISyncBag;
+			Msg("	if (bag != null) {");
+			if (bag != null) {
+				Msg("	return");
+				//SyncMemberEditorBuilder.BuildBag(bag, name, fieldInfo, ui);
+				return;
+			}
+			Msg("	ISyncArray array = member as ISyncArray;");
+			ISyncArray array = member as ISyncArray;
+			Msg("	if (array != null) {");
+			if (array != null) {
+				Msg("	return");
+				//SyncMemberEditorBuilder.BuildArray(array, name, fieldInfo, ui, labelSize);
+				return;
+			}
+			Msg("	EmptySyncElement empty = member as EmptySyncElement;");
+			EmptySyncElement empty = member as EmptySyncElement;
+			Msg("	if (empty == null) {");
+			if (empty == null) {
+				Msg("	return (null)");
+				return;
+			}
+			Msg("	return");
+		}
+	}
+
+		[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
 	class PeerDisconnectedPatch {
 		static bool Prefix(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (!Config.GetValue(NetworkPatchesEnabled)) {
