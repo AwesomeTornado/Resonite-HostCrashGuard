@@ -22,9 +22,6 @@ public class HostCrashGuard : ResoniteMod {
 	private static readonly ModConfigurationKey<bool> CatchTimeouts = new ModConfigurationKey<bool>("Catch Timeouts", "Stop network timeouts from closing the world. (Host crash, network instability)", () => true);
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> CatchHostDisconnect = new ModConfigurationKey<bool>("Catch Host Disconnects", "Stop remote disconnections from closing the world. (Kicks, some crashes)", () => true);
-
-	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<float2> DialogSize = new ModConfigurationKey<float2>("Popup Size", "Changes the size of the network error popup.", () => new float2(300f, 250f));
 
 	private static ModConfiguration Config;
@@ -58,10 +55,10 @@ public class HostCrashGuard : ResoniteMod {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout && Config.GetValue(CatchTimeouts)) {
 					Fail("The network connection has timed out.", world);
 					return false;
-				} else if (disconnectInfo.Reason == DisconnectReason.RemoteConnectionClose && Config.GetValue(CatchHostDisconnect)) {
+				}/* else if (disconnectInfo.Reason == DisconnectReason.RemoteConnectionClose) {
 					Fail("The host has disconnected from your client.", world);
 					return false;
-				}
+				}*/
 			}
 			return true;
 		}
