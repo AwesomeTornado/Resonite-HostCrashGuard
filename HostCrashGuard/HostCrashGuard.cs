@@ -52,100 +52,44 @@ public class HostCrashGuard : ResoniteMod {
 	[HarmonyPatch(typeof(SyncMemberEditorBuilder), "BuildMemberEditors")]
 	class InspectorRecursionLimiter {
 
-		/*private static bool CanBeRendered(IField field, Type type, string path, FieldInfo fieldInfo) {
+		private static bool CanBeRendered(IField field, Type type, string path, FieldInfo fieldInfo) {
 			if (!Config.GetValue(ComponentPatchesEnabled)) {//TODO: clean up config usage here.
 				return true;
 			}
 			if (type.IsPrimitive || type == typeof(string) || type == typeof(Uri) || type == typeof(Type) || type == typeof(decimal)) {
-				if (generateName) {
-					InspectorRecursionLimiter.GenerateMemberName(path, ui);
-				}
 				RangeAttribute range = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<RangeAttribute>() : null);
 				if (type == typeof(bool)) {
-					ui.BooleanMemberEditor(field, path);
-					return false;
+					return true;
 				}
 				if (range != null) {
-					string textFormat = range.TextFormat;
-					if (type != typeof(float) && type != typeof(double) && type != typeof(decimal) && type != typeof(half)) {
-						textFormat = "0";
-					}
-					ui.SliderMemberEditor(range.Min, range.Max, field, path, textFormat);
-					return false;
+					return true;
 				}
-				string text;
-				if (fieldInfo == null) {
-					text = null;
-				} else {
-					FormatAttribute customAttribute = fieldInfo.GetCustomAttribute<FormatAttribute>();
-					text = ((customAttribute != null) ? customAttribute.FormatString : null);
-				}
-				string format = text;
-				bool noContinousParsing = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<NoContinuousParsingAttribute>() : null) != null;
-				if (type == typeof(Uri)) {
-					noContinousParsing = true;
-				}
-				ui.Style.FlexibleWidth = 10f;
-				ui.PrimitiveMemberEditor(field, path, !noContinousParsing, format);
-				ui.Style.FlexibleWidth = -1f;
-				return false;
-			} else {
+				return true;
+			} else {//there's gotta be a better way than doing a bunch of checks here like this.
 				if (type == typeof(color)) {
-					if (generateName) {
-						InspectorRecursionLimiter.GenerateMemberName(path, ui);
-					}
-					ui.ColorMemberEditor(field, path, true, false, true);
-					return false;
+					return true;
 				}
 				if (type == typeof(colorX)) {
-					if (layoutElement != null) {
-						layoutElement.MinHeight.Value = 48f;
-					}
-					if (generateName) {
-						InspectorRecursionLimiter.GenerateMemberName(path, ui);
-					}
-					ui.ColorXMemberEditor(field, path, true, false, true);
-					return false;
+					return true;
 				}
 				if (type == typeof(floatQ) || type == typeof(doubleQ)) {
-					if (generateName) {
-						InspectorRecursionLimiter.GenerateMemberName(path, ui);
-					}
-					ui.QuaternionMemberEditor(field, path, false);
-					return false;
+					return true;
 				}
 				if (type == typeof(bool2) || type == typeof(bool3) || type == typeof(bool4)) {
-					int dimensions = type.GetVectorDimensions();
-					for (int i = 0; i < dimensions; i++) {
-						string element = "xyzw"[i].ToString();
-						InspectorRecursionLimiter.GenerateMemberName(element, ui);
-						ui.BooleanMemberEditor(field, element);
-					}
-					return false;
+					return true;
 				}
 				if (type.IsEnum) {
-					if (generateName) {
-						InspectorRecursionLimiter.GenerateMemberName(path, ui);
-					}
-					ui.EnumMemberEditor(field, path);
-					return false;
+					return true;
 				}
 				if (type.IsNullable()) {
-					ui.PushStyle();
-					ui.Style.MinWidth = 24f;
-					ui.Style.MinHeight = 24f;
-					NullableMemberEditor nullableMemberEditor = ui.NullableMemberEditor(field, path);
-					ui.PopStyle();
-					nullableMemberEditor.NullableBaseType.Value = Nullable.GetUnderlyingType(type);
 					FieldInfo valueField = type.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
 					if (valueField.FieldType != type) {
-						InspectorRecursionLimiter.Prefix(field, valueField.FieldType, path + ".value", ui, valueField, layoutElement, true);
+						return InspectorRecursionLimiter.CanBeRendered(field, valueField.FieldType, path + ".value", valueField);
 					}
-					return false;
+					return true;
 				}
 				foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
 					if (f.FieldType == type || path.Contains(f.Name)) {
-						Msg("Stopped recursion chain");
 						return false;
 					}
 				}
@@ -156,11 +100,12 @@ public class HostCrashGuard : ResoniteMod {
 					} else {
 						subpath = path + "." + f.Name;
 					}
-					InspectorRecursionLimiter.Prefix(field, f.FieldType, subpath, ui, f, layoutElement, true);
+					return InspectorRecursionLimiter.CanBeRendered(field, f.FieldType, subpath, f);
 				}
-				return false;
+				Warn("Reached the end of type validation chain with no definitive result. This type may or may not be invalid. This message should never be shown.");
+				return true;
 			}
-		}*/
+		}
 
 		private static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
 			if (!Config.GetValue(ComponentPatchesEnabled)) {
@@ -295,7 +240,7 @@ public class HostCrashGuard : ResoniteMod {
 			}
 			World world = Traverse.Create(__instance).Field("world").GetValue<World>();
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
-				if (disconnectInfo.Reason == DisconnectReason.Timeout && Config.GetValue(CatchTimeouts)) {
+				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
 					Fail("The network connection has timed out.", world);
 					return false;
 				}
