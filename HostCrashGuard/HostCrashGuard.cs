@@ -9,6 +9,7 @@ using System;
 using System.Reflection;
 using System.Xml.Linq;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HostCrashGuard;
 
@@ -23,7 +24,7 @@ public class HostCrashGuard : ResoniteMod {
 	private static readonly ModConfigurationKey<bool> NetworkPatchesEnabled = new ModConfigurationKey<bool>("Network Patches", "Enable all network crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> CatchTimeouts = new ModConfigurationKey<bool>("Catch Timeouts", "Stop network timeouts from closing the world. (Host crash, network instability)", () => true);
+	private static readonly ModConfigurationKey<bool> ComponentPatchesEnabled = new ModConfigurationKey<bool>("Component Patches", "Enable all component related crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<float2> DialogSize = new ModConfigurationKey<float2>("Popup Size", "Changes the size of the network error popup.", () => new float2(300f, 250f));
@@ -48,169 +49,245 @@ public class HostCrashGuard : ResoniteMod {
 		}
 	}
 
-	//// Token: 0x06002BB8 RID: 11192 RVA: 0x000C52F0 File Offset: 0x000C34F0
-	//public static void BuildInspectorUI(Worker worker, UIBuilder ui, Predicate<ISyncMember> memberFilter = null)
+	[HarmonyPatch(typeof(SyncMemberEditorBuilder), "BuildMemberEditors")]
+	class InspectorRecursionLimiter {
 
-	[HarmonyPatch(typeof(WorkerInspector), nameof(WorkerInspector.BuildInspectorUI))]
-	class InvalidComponentPatch {
-		static bool Prefix(WorkerInspector __instance, Worker worker, UIBuilder ui, Predicate<ISyncMember> memberFilter = null) {
-			Msg(Environment.StackTrace);
-			Msg("This is the start of the function");
-			Msg("for (int i = 0; i < worker.SyncMemberCount; i++) {");
-			try {
-				for (int i = 0; i < worker.SyncMemberCount; i++) {
-					Msg("ISyncMember member = worker.GetSyncMember(i);");
-					ISyncMember member = worker.GetSyncMember(i);
-					Msg("if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {");
-					if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null && (memberFilter == null || memberFilter(member))) {
-						Msg("SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);");
-						Msg("i is " + i);
-						Msg("SyncMember is " + worker.GetSyncMemberName(i));
-						Msg("FieldInfo is " + worker.GetSyncMemberFieldInfo(i).ToString());
-						SyncMemberEditorBuilder.Build(member, worker.GetSyncMemberName(i), worker.GetSyncMemberFieldInfo(i), ui, 0.3f);
-						Msg("past Build function");
+		/*private static bool CanBeRendered(IField field, Type type, string path, FieldInfo fieldInfo) {
+			if (!Config.GetValue(ComponentPatchesEnabled)) {//TODO: clean up config usage here.
+				return true;
+			}
+			if (type.IsPrimitive || type == typeof(string) || type == typeof(Uri) || type == typeof(Type) || type == typeof(decimal)) {
+				if (generateName) {
+					InspectorRecursionLimiter.GenerateMemberName(path, ui);
+				}
+				RangeAttribute range = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<RangeAttribute>() : null);
+				if (type == typeof(bool)) {
+					ui.BooleanMemberEditor(field, path);
+					return false;
+				}
+				if (range != null) {
+					string textFormat = range.TextFormat;
+					if (type != typeof(float) && type != typeof(double) && type != typeof(decimal) && type != typeof(half)) {
+						textFormat = "0";
+					}
+					ui.SliderMemberEditor(range.Min, range.Max, field, path, textFormat);
+					return false;
+				}
+				string text;
+				if (fieldInfo == null) {
+					text = null;
+				} else {
+					FormatAttribute customAttribute = fieldInfo.GetCustomAttribute<FormatAttribute>();
+					text = ((customAttribute != null) ? customAttribute.FormatString : null);
+				}
+				string format = text;
+				bool noContinousParsing = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<NoContinuousParsingAttribute>() : null) != null;
+				if (type == typeof(Uri)) {
+					noContinousParsing = true;
+				}
+				ui.Style.FlexibleWidth = 10f;
+				ui.PrimitiveMemberEditor(field, path, !noContinousParsing, format);
+				ui.Style.FlexibleWidth = -1f;
+				return false;
+			} else {
+				if (type == typeof(color)) {
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.ColorMemberEditor(field, path, true, false, true);
+					return false;
+				}
+				if (type == typeof(colorX)) {
+					if (layoutElement != null) {
+						layoutElement.MinHeight.Value = 48f;
+					}
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.ColorXMemberEditor(field, path, true, false, true);
+					return false;
+				}
+				if (type == typeof(floatQ) || type == typeof(doubleQ)) {
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.QuaternionMemberEditor(field, path, false);
+					return false;
+				}
+				if (type == typeof(bool2) || type == typeof(bool3) || type == typeof(bool4)) {
+					int dimensions = type.GetVectorDimensions();
+					for (int i = 0; i < dimensions; i++) {
+						string element = "xyzw"[i].ToString();
+						InspectorRecursionLimiter.GenerateMemberName(element, ui);
+						ui.BooleanMemberEditor(field, element);
+					}
+					return false;
+				}
+				if (type.IsEnum) {
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.EnumMemberEditor(field, path);
+					return false;
+				}
+				if (type.IsNullable()) {
+					ui.PushStyle();
+					ui.Style.MinWidth = 24f;
+					ui.Style.MinHeight = 24f;
+					NullableMemberEditor nullableMemberEditor = ui.NullableMemberEditor(field, path);
+					ui.PopStyle();
+					nullableMemberEditor.NullableBaseType.Value = Nullable.GetUnderlyingType(type);
+					FieldInfo valueField = type.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
+					if (valueField.FieldType != type) {
+						InspectorRecursionLimiter.Prefix(field, valueField.FieldType, path + ".value", ui, valueField, layoutElement, true);
+					}
+					return false;
+				}
+				foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+					if (f.FieldType == type || path.Contains(f.Name)) {
+						Msg("Stopped recursion chain");
+						return false;
 					}
 				}
-			} catch (Exception e) {
-				Msg(e.ToString());
+				foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+					string subpath;
+					if (string.IsNullOrEmpty(path)) {
+						subpath = f.Name;
+					} else {
+						subpath = path + "." + f.Name;
+					}
+					InspectorRecursionLimiter.Prefix(field, f.FieldType, subpath, ui, f, layoutElement, true);
+				}
 				return false;
 			}
-			Msg("for (int j = 0; j < worker.SyncMethodCount; j++) {");
-			for (int j = 0; j < worker.SyncMethodCount; j++) {
-				Msg("SyncMethodInfo info;");
-				SyncMethodInfo info;
-				Msg("Delegate method;");
-				Delegate method;
-				Msg("worker.GetSyncMethodData(j, out info, out method);");
-				worker.GetSyncMethodData(j, out info, out method);
-				Msg("if (method != null) {");
-				if (method != null) {
-					//SyncMemberEditorBuilder.BuildSyncMethod(method, info.methodType, info.method, ui);
-					Msg("That one line got called");
-				}
-			}
-			Msg("Skipping original function");
-			return false;
-		}
-		static void Postfix() {
-			Msg(Environment.StackTrace);
-			Msg("This is the end of the function");
-		}
-	}
-	[HarmonyPatch(typeof(SyncMemberEditorBuilder), nameof(SyncMemberEditorBuilder.Build))]
-	class InvalidComponentPatch_2 {
-		//public static void Build(ISyncMember member, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize = 0.3f)
-		static void Prefix(ISyncMember member, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize = 0.3f) {
-			Msg(member.ToString() + name + fieldInfo.Name + fieldInfo.FieldType.ToString() + fieldInfo.ToString() + ui.ToString() +  labelSize.ToString());
-			Msg("	SectionAttribute section = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<SectionAttribute>() : null);");
-			SectionAttribute section = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<SectionAttribute>() : null);
-			Msg("	SyncObject syncObject = member as SyncObject;");
-			SyncObject syncObject = member as SyncObject;
-			Msg("	if (syncObject != null) {");
-			if (syncObject != null) {
-				Msg("		return");
-				//SyncMemberEditorBuilder.BuildSyncObject(syncObject, name, fieldInfo, ui, labelSize);
-				return;
-			}
-			Msg("	IField field = member as IField;");
-			IField field = member as IField;
-			Msg("	if (field != null) {");
-			if (field != null) {
-				Msg("		return, most common crash here.");
-				//SyncMemberEditorBuilder.BuildField(field, name, fieldInfo, ui, labelSize);
-				return;
-			}
-			Msg("	SyncPlayback playback = member as SyncPlayback;");
-			SyncPlayback playback = member as SyncPlayback;
-			Msg("	if (playback != null) {");
-			if (playback != null) {
-				Msg("		return");
-				//SyncMemberEditorBuilder.BuildPlayback(playback, name, fieldInfo, ui, labelSize);
-				return;
-			}
-			Msg("	ISyncList list = member as ISyncList;");
-			ISyncList list = member as ISyncList;
-			Msg("	if (list != null) {");
-			if (list != null) {
-				Msg("		return");
-				//SyncMemberEditorBuilder.BuildList(list, name, fieldInfo, ui);
-				return;
-			}
-			Msg("	ISyncBag bag = member as ISyncBag;");
-			ISyncBag bag = member as ISyncBag;
-			Msg("	if (bag != null) {");
-			if (bag != null) {
-				Msg("		return");
-				//SyncMemberEditorBuilder.BuildBag(bag, name, fieldInfo, ui);
-				return;
-			}
-			Msg("	ISyncArray array = member as ISyncArray;");
-			ISyncArray array = member as ISyncArray;
-			Msg("	if (array != null) {");
-			if (array != null) {
-				Msg("		return");
-				//SyncMemberEditorBuilder.BuildArray(array, name, fieldInfo, ui, labelSize);
-				return;
-			}
-			Msg("	EmptySyncElement empty = member as EmptySyncElement;");
-			EmptySyncElement empty = member as EmptySyncElement;
-			Msg("	if (empty == null) {");
-			if (empty == null) {
-				Msg("		return (null)");
-				return;
-			}
-			Msg("	return");
-		}
-	}
+		}*/
 
-	[HarmonyPatch(typeof(SyncMemberEditorBuilder), nameof(SyncMemberEditorBuilder.BuildField), new Type[] { typeof(IField), typeof(string), typeof(FieldInfo), typeof(UIBuilder), typeof(float) })]
-	class InvalidComponentPatch_3 {
-		static void Prefix(IField field, string name, FieldInfo fieldInfo, UIBuilder ui, float labelSize) {
-			Msg("			BuildField Function Entered");
-			bool isMatrixType = field.ValueType.IsMatrixType();
-			bool isSHtype = field.ValueType.IsSphericalHarmonicsType();
-			if (isMatrixType) {
-				int2 dimensions = field.ValueType.GetMatrixDimensions();
-				
-			} else if (isSHtype) {
-				Type type = field.ValueType.GetGenericArguments()[0];
-				float size = 24f;
-				if (type == typeof(colorX)) {
-					size = 48f;
-				}
-				int coefficients = field.ValueType.GetSphericalHarmonicsCoefficientCount();
-				
+		private static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
+			if (!Config.GetValue(ComponentPatchesEnabled)) {
+				return true;
 			}
-			AssetRef<ITexture2D> texRef = field as AssetRef<ITexture2D>;
-			if (texRef == null) {
-				ISyncDelegate syncDelegate = field as ISyncDelegate;
-				if (syncDelegate == null) {
-					ISyncRef syncRef = field as ISyncRef;
-					if (syncRef == null) {
-						if (isMatrixType) {
-							Msg("MatrixType");
-						} else if (isSHtype) {
-							Msg("SH type");
-						} else {
-							Msg("BAD, RECURSION!");
-						}
+			if (type.IsPrimitive || type == typeof(string) || type == typeof(Uri) || type == typeof(Type) || type == typeof(decimal)) {
+				if (generateName) {
+					InspectorRecursionLimiter.GenerateMemberName(path, ui);
+				}
+				RangeAttribute range = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<RangeAttribute>() : null);
+				if (type == typeof(bool)) {
+					ui.BooleanMemberEditor(field, path);
+					return false;
+				}
+				if (range != null) {
+					string textFormat = range.TextFormat;
+					if (type != typeof(float) && type != typeof(double) && type != typeof(decimal) && type != typeof(half)) {
+						textFormat = "0";
+					}
+					ui.SliderMemberEditor(range.Min, range.Max, field, path, textFormat);
+					return false;
+				}
+				string text;
+				if (fieldInfo == null) {
+					text = null;
+				} else {
+					FormatAttribute customAttribute = fieldInfo.GetCustomAttribute<FormatAttribute>();
+					text = ((customAttribute != null) ? customAttribute.FormatString : null);
+				}
+				string format = text;
+				bool noContinousParsing = ((fieldInfo != null) ? fieldInfo.GetCustomAttribute<NoContinuousParsingAttribute>() : null) != null;
+				if (type == typeof(Uri)) {
+					noContinousParsing = true;
+				}
+				ui.Style.FlexibleWidth = 10f;
+				ui.PrimitiveMemberEditor(field, path, !noContinousParsing, format);
+				ui.Style.FlexibleWidth = -1f;
+				return false;
+			} else {
+				if (type == typeof(color)) {
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.ColorMemberEditor(field, path, true, false, true);
+					return false;
+				}
+				if (type == typeof(colorX)) {
+					if (layoutElement != null) {
+						layoutElement.MinHeight.Value = 48f;
+					}
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.ColorXMemberEditor(field, path, true, false, true);
+					return false;
+				}
+				if (type == typeof(floatQ) || type == typeof(doubleQ)) {
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.QuaternionMemberEditor(field, path, false);
+					return false;
+				}
+				if (type == typeof(bool2) || type == typeof(bool3) || type == typeof(bool4)) {
+					int dimensions = type.GetVectorDimensions();
+					for (int i = 0; i < dimensions; i++) {
+						string element = "xyzw"[i].ToString();
+						InspectorRecursionLimiter.GenerateMemberName(element, ui);
+						ui.BooleanMemberEditor(field, element);
+					}
+					return false;
+				}
+				if (type.IsEnum) {
+					if (generateName) {
+						InspectorRecursionLimiter.GenerateMemberName(path, ui);
+					}
+					ui.EnumMemberEditor(field, path);
+					return false;
+				}
+				if (type.IsNullable()) {
+					ui.PushStyle();
+					ui.Style.MinWidth = 24f;
+					ui.Style.MinHeight = 24f;
+					NullableMemberEditor nullableMemberEditor = ui.NullableMemberEditor(field, path);
+					ui.PopStyle();
+					nullableMemberEditor.NullableBaseType.Value = Nullable.GetUnderlyingType(type);
+					FieldInfo valueField = type.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
+					if (valueField.FieldType != type) {
+						InspectorRecursionLimiter.Prefix(field, valueField.FieldType, path + ".value", ui, valueField, layoutElement, true);
+					}
+					return false;
+				}
+				foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+					if (f.FieldType == type || path.Contains(f.Name)) {
+						Msg("Stopped recursion chain");
+						return false;
 					}
 				}
+				foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+					string subpath;
+					if (string.IsNullOrEmpty(path)) {
+						subpath = f.Name;
+					} else {
+						subpath = path + "." + f.Name;
+					}
+					InspectorRecursionLimiter.Prefix(field, f.FieldType, subpath, ui, f, layoutElement, true);
+				}
+				return false;
+			}
+		}
+
+		private static void GenerateMemberName(string path, UIBuilder ui) {
+			if (!string.IsNullOrEmpty(path)) {
+				int dotIndex = path.LastIndexOf(".");
+				string name;
+				if (dotIndex < 0) {
+					name = path;
+				} else {
+					name = path.Substring(dotIndex + 1);
+				}
+				LocaleString localeString = name;
+				ui.Text(in localeString, true, new Alignment?(Alignment.MiddleLeft), false, null);
 			}
 		}
 	}
-	//private static void BuildMemberEditors(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true)
 
-	[HarmonyPatch(typeof(SyncMemberEditorBuilder), "BuildMemberEditors")]
-	class InvalidComponentPatch_4 {
-		static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
-			Msg("Start of BuildMemberEditors");
-			Msg(fieldInfo.Name.ToString() + " " + path);
-			return !(path.Length > 1000);
-		}
-	}
-
-		[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
+	[HarmonyPatch(typeof(LNL_Connection), nameof(LNL_Connection.OnPeerDisconnected))]
 	class PeerDisconnectedPatch {
 		static bool Prefix(LNL_Connection __instance, NetPeer peer, DisconnectInfo disconnectInfo) {
 			if (!Config.GetValue(NetworkPatchesEnabled)) {
@@ -221,12 +298,9 @@ public class HostCrashGuard : ResoniteMod {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout && Config.GetValue(CatchTimeouts)) {
 					Fail("The network connection has timed out.", world);
 					return false;
-				}/* else if (disconnectInfo.Reason == DisconnectReason.RemoteConnectionClose) {
-					Fail("The host has disconnected from your client.", world);
-					return false;
-				}*/
+				}
 			}
-		
+
 			return true;
 		}
 
