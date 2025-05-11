@@ -69,7 +69,7 @@ public class HostCrashGuard : ResoniteMod {
 				type.IsEnum;
 		}
 
-		private static bool CanBeRendered(Type type, string path) {
+		public static bool CanBeRendered(Type type, string path = "") {
 			if (!Config.GetValue(ComponentPatchesEnabled)) {//TODO: clean up config usage here.
 				return true;
 			}
@@ -79,28 +79,34 @@ public class HostCrashGuard : ResoniteMod {
 			if (type.IsNullable()) {//TODO: Can this be removed?
 				FieldInfo valueField = type.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
 				if (valueField.FieldType != type) {
+					//Msg("Entering recursion chain");
+					//Msg(path);
 					return InspectorRecursionLimiter.CanBeRendered(valueField.FieldType, path);
 				}
+				Msg("Returned true here");
 				return true;//TODO: Is this correct?
 			}
 			string sanitizedTypes = "." + path + ".";
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				if (sanitizedTypes.Contains("." + f.FieldType.ToString() + ".")) {
+				if (sanitizedTypes.Contains("." + f.Name + ".")) {
 					Msg("Stopped recursion chain");
-					Msg(path);//TODO: Remove before release?
+					//Msg(path);//TODO: Remove before release?
 					return false;
 				}
 			}
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
 				string subpath;
 				if (string.IsNullOrEmpty(path)) {
-					subpath = f.FieldType.ToString();
+					subpath = f.Name;
 				} else {
-					subpath = path + "." + f.FieldType.ToString();
+					subpath = path + "." + f.Name;
 				}
+				//Msg("Entering recursion chain");
+				//Msg(subpath);
 				return InspectorRecursionLimiter.CanBeRendered(f.FieldType, subpath);
 			}
 			Warn("Reached the end of type validation chain with no definitive result. This type may or may not be invalid. This message should never be shown.");
+			Warn(path);
 			return true;
 		}
 
@@ -109,6 +115,9 @@ public class HostCrashGuard : ResoniteMod {
 				return true;
 			}
 			if (CanBeRendered(type, path) is false) {
+				ui.HorizontalLayout(4f, 0f, null);
+				GenerateMemberName(path, ui);
+				ui.NestOut();
 				return false;
 			}
 			return true;
