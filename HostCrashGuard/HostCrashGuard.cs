@@ -48,13 +48,18 @@ public class HostCrashGuard : ResoniteMod {
 		}
 	}
 
-	[HarmonyPatch(typeof(ReflectionExtensions), nameof(ReflectionExtensions.IsValidGenericType))]
+	[HarmonyPatch(typeof(ComponentSelector), "GetCustomGenericType")]
 	class TypeValidationCheck {
-		private static void Postfix(Type type, bool validForInstantiation, ref bool __result) {
-			if (!Config.GetValue(NetworkPatchesEnabled)) {
+		private static void Postfix(ref Type? __result) {
+			if (!Config.GetValue(ComponentPatchesEnabled)) {
 				return;
 			}
-			__result = __result && InspectorRecursionLimiter.CanBeRendered(type);
+			if (__result is not null) {
+				Msg("result is not null");
+				Msg(__result.Name);
+				Msg(InspectorRecursionLimiter.CanBeRendered(__result));
+			}
+			//__result = (__result is null || InspectorRecursionLimiter.CanBeRendered(__result)) ? __result : null;
 		}
 	}
 
@@ -88,6 +93,8 @@ public class HostCrashGuard : ResoniteMod {
 		}
 
 		public static bool CanBeRendered(Type type, string path = ".") {
+			Msg("can be rendered");
+			Msg(type.Name);
 			if (typeChecking(type)) {
 				return true;
 			}
@@ -107,7 +114,9 @@ public class HostCrashGuard : ResoniteMod {
 			}
 
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, path + f.Name + "."))
+				string newPath = string.Empty;//TODO: I think some types that shouldn't be rendered are sneaking in here, check dnspy.
+				newPath = (path + f.Name + ".");//TODO: remove this nonsense
+				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType,  newPath))
 					return false;
 			}
 			return true;
