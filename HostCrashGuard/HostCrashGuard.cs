@@ -54,7 +54,7 @@ public class HostCrashGuard : ResoniteMod {
 			if (!Config.GetValue(NetworkPatchesEnabled)) {
 				return;
 			}
-			__result = __result && !InspectorRecursionLimiter.CanBeRendered(type);
+			__result = __result && InspectorRecursionLimiter.CanBeRendered(type);
 		}
 	}
 
