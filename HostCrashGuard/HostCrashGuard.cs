@@ -48,6 +48,16 @@ public class HostCrashGuard : ResoniteMod {
 		}
 	}
 
+	[HarmonyPatch(typeof(ReflectionExtensions), nameof(ReflectionExtensions.IsValidGenericType))]
+	class TypeValidationCheck {
+		private static void Postfix(Type type, bool x, ref bool __result) {
+			if (!Config.GetValue(NetworkPatchesEnabled)) {
+				return;
+			}
+			__result = __result && !InspectorRecursionLimiter.CanBeRendered(type);
+		}
+	}
+
 	[HarmonyPatch(typeof(SyncMemberEditorBuilder), "BuildMemberEditors")]
 	class InspectorRecursionLimiter {
 		private static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
