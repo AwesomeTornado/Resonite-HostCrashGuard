@@ -7,9 +7,8 @@ using LiteNetLib;
 using FrooxEngine.UIX;
 using System;
 using System.Reflection;
-using System.Xml.Linq;
-using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace HostCrashGuard;
 
@@ -51,6 +50,15 @@ public class HostCrashGuard : ResoniteMod {
 
 	[HarmonyPatch(typeof(SyncMemberEditorBuilder), "BuildMemberEditors")]
 	class InspectorRecursionLimiter {
+		private static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
+			if (!Config.GetValue(ComponentPatchesEnabled)) {
+				return true;
+			}
+			if (CanBeRendered(type, path + ".") is false) {
+				return false;
+			}
+			return true;
+		}
 
 		private static bool typeChecking(Type type) {
 			return type.IsPrimitive ||
@@ -69,72 +77,30 @@ public class HostCrashGuard : ResoniteMod {
 				type.IsEnum;
 		}
 
-		public static bool CanBeRendered(Type type, string path = "") {
-			if (!Config.GetValue(ComponentPatchesEnabled)) {//TODO: clean up config usage here.
-				return true;
-			}
+		public static bool CanBeRendered(Type type, string path = ".") {
 			if (typeChecking(type)) {
 				return true;
 			}
-			if (type.IsNullable()) {//TODO: Can this be removed?
+			if (type.IsNullable()) {
 				FieldInfo valueField = type.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
-				if (valueField.FieldType != type) {
-					//Msg("Entering recursion chain");
-					//Msg(path);
-					return InspectorRecursionLimiter.CanBeRendered(valueField.FieldType, path);
+				return InspectorRecursionLimiter.CanBeRendered(valueField.FieldType, path);
+			}
+			//I'm not sure if this multithreading helps, but it probably does.
+			int result = 1;
+			Parallel.ForEach(type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic), (FieldInfo f) => {
+				if ((path.Length - path.Replace("." + f.Name + ".", String.Empty).Length) > 0) {
+					Interlocked.CompareExchange(ref result, 0, 1);
 				}
-				Msg("Returned true here");
-				return true;//TODO: Is this correct?
-			}
-			string sanitizedTypes = "." + path + ".";
-			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				if (sanitizedTypes.Contains("." + f.Name + ".")) {
-					Msg("Stopped recursion chain");
-					//Msg(path);//TODO: Remove before release?
-					return false;
-				}
-			}
-			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				string subpath;
-				if (string.IsNullOrEmpty(path)) {
-					subpath = f.Name;
-				} else {
-					subpath = path + "." + f.Name;
-				}
-				//Msg("Entering recursion chain");
-				//Msg(subpath);
-				return InspectorRecursionLimiter.CanBeRendered(f.FieldType, subpath);
-			}
-			Warn("Reached the end of type validation chain with no definitive result. This type may or may not be invalid. This message should never be shown.");
-			Warn(path);
-			return true;
-		}
-
-		private static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
-			if (!Config.GetValue(ComponentPatchesEnabled)) {
-				return true;
-			}
-			if (CanBeRendered(type, path) is false) {
-				ui.HorizontalLayout(4f, 0f, null);
-				GenerateMemberName(path, ui);
-				ui.NestOut();
+			});
+			if (result == 0) {
 				return false;
 			}
-			return true;
-		}
 
-		private static void GenerateMemberName(string path, UIBuilder ui) {
-			if (!string.IsNullOrEmpty(path)) {
-				int dotIndex = path.LastIndexOf(".");
-				string name;
-				if (dotIndex < 0) {
-					name = path;
-				} else {
-					name = path.Substring(dotIndex + 1);
-				}
-				LocaleString localeString = name;
-				ui.Text(in localeString, true, new Alignment?(Alignment.MiddleLeft), false, null);
+			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, path + f.Name + "."))
+					return false;
 			}
+			return true;
 		}
 	}
 
