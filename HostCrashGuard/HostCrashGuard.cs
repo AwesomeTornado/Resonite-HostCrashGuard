@@ -48,21 +48,6 @@ public class HostCrashGuard : ResoniteMod {
 		}
 	}
 
-	[HarmonyPatch(typeof(ComponentSelector), "GetCustomGenericType")]
-	class TypeValidationCheck {
-		private static void Postfix(ref Type? __result) {
-			if (!Config.GetValue(ComponentPatchesEnabled)) {
-				return;
-			}
-			if (__result is not null) {
-				Msg("result is not null");
-				Msg(__result.Name);
-				Msg(InspectorRecursionLimiter.CanBeRendered(__result));
-			}
-			//__result = (__result is null || InspectorRecursionLimiter.CanBeRendered(__result)) ? __result : null;
-		}
-	}
-
 	[HarmonyPatch(typeof(SyncMemberEditorBuilder), "BuildMemberEditors")]
 	class InspectorRecursionLimiter {
 		private static bool Prefix(IField field, Type type, string path, UIBuilder ui, FieldInfo fieldInfo, LayoutElement layoutElement, bool generateName = true) {
@@ -93,8 +78,6 @@ public class HostCrashGuard : ResoniteMod {
 		}
 
 		public static bool CanBeRendered(Type type, string path = ".") {
-			Msg("can be rendered");
-			Msg(type.Name);
 			if (typeChecking(type)) {
 				return true;
 			}
@@ -110,14 +93,16 @@ public class HostCrashGuard : ResoniteMod {
 				}
 			});
 			if (result == 0) {
+				Warn("Attempted creation of an invalid type");
+				Warn(path);
+				Warn(type.Name);
 				return false;
 			}
 
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				string newPath = string.Empty;//TODO: I think some types that shouldn't be rendered are sneaking in here, check dnspy.
-				newPath = (path + f.Name + ".");//TODO: remove this nonsense
-				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType,  newPath))
+				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, (path + f.Name + "."))) {
 					return false;
+				}
 			}
 			return true;
 		}
@@ -132,7 +117,7 @@ public class HostCrashGuard : ResoniteMod {
 			World world = Traverse.Create(__instance).Field("world").GetValue<World>();
 			if (disconnectInfo.SocketErrorCode == SocketError.Success) {
 				if (disconnectInfo.Reason == DisconnectReason.Timeout) {
-					Fail("The network connection has timed out.", world);
+					Fail("The network connection has timed out.", world, __instance);
 					return false;
 				}
 			}
@@ -140,7 +125,7 @@ public class HostCrashGuard : ResoniteMod {
 			return true;
 		}
 
-		static void Fail(string reason, World world) {
+		static void Fail(string reason, World world, LNL_Connection connection) {
 			Msg("Prevented world close with reason: " + reason);
 			var w = Userspace.UserspaceWorld;
 
@@ -155,8 +140,9 @@ public class HostCrashGuard : ResoniteMod {
 
 				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED)).LocalPressed +=
 				(IButton button, ButtonEventData eventData) => {
-					Userspace.ExitWorld(world);
+					Userspace.LeaveSession(world); //untested change here, implemented V3.0.0
 					slot.Destroy();
+					connection.Close(); //untested change here, implemented V3.0.0
 				};
 				uIBuilder.Button("Close Menu", new colorX?(RadiantUI_Constants.Sub.GREEN)).LocalPressed +=
 				(IButton button, ButtonEventData eventData) => slot.Destroy();
