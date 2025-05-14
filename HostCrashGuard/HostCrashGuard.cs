@@ -13,7 +13,7 @@ using System.Threading;
 namespace HostCrashGuard;
 
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "3.0.0"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "2.3.0"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
