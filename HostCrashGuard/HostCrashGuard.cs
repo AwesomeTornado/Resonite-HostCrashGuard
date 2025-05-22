@@ -13,7 +13,7 @@ using System.Threading;
 namespace HostCrashGuard;
 
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "2.3.0"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "2.4.0"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
@@ -23,7 +23,7 @@ public class HostCrashGuard : ResoniteMod {
 	private static readonly ModConfigurationKey<bool> NetworkPatchesEnabled = new ModConfigurationKey<bool>("Network Patches", "Enable all network crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> ComponentPatchesEnabled = new ModConfigurationKey<bool>("Component Patches", "Enable all component related crash fixes of this mod.", () => false);
+	private static readonly ModConfigurationKey<bool> ComponentPatchesEnabled = new ModConfigurationKey<bool>("Component Patches", "Enable all component related crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<float2> DialogSize = new ModConfigurationKey<float2>("Popup Size", "Changes the size of the network error popup.", () => new float2(300f, 250f));
@@ -35,6 +35,22 @@ public class HostCrashGuard : ResoniteMod {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
 		harmony.PatchAll();
 		Msg("HostCrashGuard loaded.");
+	}
+
+	[HarmonyPatch(typeof(ComponentSelector), "GetCustomGenericType")]
+	class ComponentSelectorValidator {
+		private static void Postfix(ref Type? __result) {
+			if (__result is null || !Config.GetValue(ComponentPatchesEnabled)) {
+				return;
+			}
+			Type[] genericMembers = __result.GetGenericArguments();
+			foreach (Type type in genericMembers) {
+				if (InspectorRecursionLimiter.CanBeRendered(type, ".") is false) {
+					__result = null;
+					return;
+				}
+			}
+		}
 	}
 
 	[HarmonyPatch(typeof(Coder<decimal>), nameof(Coder<decimal>.CanDivide))]
@@ -55,8 +71,13 @@ public class HostCrashGuard : ResoniteMod {
 				return true;
 			}
 			if (CanBeRendered(type, path + ".") is false) {
+				ui.Text("HostCrashGuard stopped this from rendering. This feature can be disabled.");
+				ui.Style.MinHeight = 8f;//remove this and the two lines below if ui stuff is messed up.
+				ui.Panel();
+				ui.NestOut();
 				return false;
 			}
+
 			return true;
 		}
 
@@ -140,9 +161,9 @@ public class HostCrashGuard : ResoniteMod {
 
 				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED)).LocalPressed +=
 				(IButton button, ButtonEventData eventData) => {
-					Userspace.LeaveSession(world); //untested change here, implemented V3.0.0
+					Userspace.LeaveSession(world);
 					slot.Destroy();
-					connection.Close(); //untested change here, implemented V3.0.0
+					connection.Close();
 				};
 				uIBuilder.Button("Close Menu", new colorX?(RadiantUI_Constants.Sub.GREEN)).LocalPressed +=
 				(IButton button, ButtonEventData eventData) => slot.Destroy();
