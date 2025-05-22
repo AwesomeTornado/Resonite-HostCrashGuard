@@ -114,9 +114,6 @@ public class HostCrashGuard : ResoniteMod {
 				}
 			});
 			if (result == 0) {
-				Warn("Attempted creation of an invalid type");
-				Warn(path);
-				Warn(type.Name);
 				return false;
 			}
 
