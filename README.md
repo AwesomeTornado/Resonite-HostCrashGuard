@@ -5,6 +5,7 @@ A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoade
 This mod now supports a small collection of crash fixes, as follows
 - ValueMod\<Decimal\> crash [#2746](https://github.com/Yellow-Dog-Man/Resonite-Issues/issues/2746)
 - Host Timeout crash [#2681](https://github.com/Yellow-Dog-Man/Resonite-Issues/issues/2681)
+- Invalid Component crash [#1646](https://github.com/Yellow-Dog-Man/Resonite-Issues/issues/1646)
 
 ## Installation
 1. Install [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader).
