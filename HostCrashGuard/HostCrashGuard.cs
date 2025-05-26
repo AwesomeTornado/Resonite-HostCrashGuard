@@ -43,7 +43,7 @@ public class HostCrashGuard : ResoniteMod {
 	[HarmonyPatch(typeof(ComponentSelector), "GetCustomGenericType")]
 	class ComponentSelectorValidator {
 		private static void Postfix(ref Type? __result) {
-			if (__result is null || !Config.GetValue(ComponentPatchesEnabled)) {
+			if (__result is null || __result.ContainsGenericParameters || !Config.GetValue(ComponentPatchesEnabled)) {
 				return;
 			}
 
@@ -56,7 +56,7 @@ public class HostCrashGuard : ResoniteMod {
 			Msg("Component is named \"", component.Name, "\"");
 			Msg("component has ", component.SyncMemberCount, " sync members");
 			//InitializeSyncMembers
-			Traverse.Create(component).Method("InitializeSyncMembers");
+			Traverse.Create(component).Method("InitializeSyncMembers").GetValue();
 
 			for (int i = 0; i < component.SyncMemberCount; i++) {//this pyramid / arrowhead mess below should probably be cleaned up eventually.
 				Msg(i);
