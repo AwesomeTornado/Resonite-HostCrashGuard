@@ -43,7 +43,7 @@ public class HostCrashGuard : ResoniteMod {
 	[HarmonyPatch(typeof(ComponentSelector), "GetCustomGenericType")]
 	class ComponentSelectorValidator {
 		private static void Postfix(ref Type? __result) {
-			if (__result is null || __result.ContainsGenericParameters || !Config.GetValue(ComponentPatchesEnabled)) {
+			if (__result is null || ContainsAnyGenericParameters(__result) || !Config.GetValue(ComponentPatchesEnabled)) {
 				return;
 			}
 
@@ -100,8 +100,15 @@ public class HostCrashGuard : ResoniteMod {
 			}
 		}
 
-		private static void test(Worker worker) {
-
+		private static bool ContainsAnyGenericParameters(Type type) {
+			if (type.ContainsGenericParameters) {
+				return true;
+			}
+			bool containsGenerics = false;
+			foreach (Type innerType in type.GetGenericArguments()) {
+				containsGenerics |= ContainsAnyGenericParameters(innerType);
+			}
+			return containsGenerics;
 		}
 	}
 
