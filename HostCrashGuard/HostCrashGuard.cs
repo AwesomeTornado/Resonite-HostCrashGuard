@@ -53,7 +53,12 @@ public class HostCrashGuard : ResoniteMod {
 				Msg("Component is null, returning");
 				return;
 			}
+			Msg("Component is named \"", component.Name, "\"");
+			Msg("component has ", component.SyncMemberCount, " sync members");
+			
+
 			for (int i = 0; i < component.SyncMemberCount; i++) {
+				Msg(i);
 				ISyncMember syncMember = component.GetSyncMember(i);
 				if (syncMember is null) {
 					Msg("Returned due to null syncmember");
