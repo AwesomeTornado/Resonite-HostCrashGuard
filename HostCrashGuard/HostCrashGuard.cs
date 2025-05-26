@@ -45,7 +45,7 @@ public class HostCrashGuard : ResoniteMod {
 			}
 			Type[] genericMembers = __result.GetGenericArguments();
 			foreach (Type type in genericMembers) {
-				if (InspectorRecursionLimiter.CanBeRendered(type, ".") is false) {
+				if (InspectorRecursionLimiter.CanTypeBeRendered(type) is false) {
 					__result = null;
 					return;
 				}
@@ -70,7 +70,7 @@ public class HostCrashGuard : ResoniteMod {
 			if (!Config.GetValue(ComponentPatchesEnabled)) {
 				return true;
 			}
-			if (CanBeRendered(type, path + ".") is false) {
+			if (CanSyncBeRendered(type, path + ".") is false) {
 				ui.Text("HostCrashGuard stopped this from rendering. This feature can be disabled.");
 				ui.Style.MinHeight = 8f;//remove this and the two lines below if ui stuff is messed up.
 				ui.Panel();
@@ -98,13 +98,28 @@ public class HostCrashGuard : ResoniteMod {
 				type.IsEnum;
 		}
 
-		public static bool CanBeRendered(Type type, string path = ".") {
+		public static bool CanTypeBeRendered(Type type) {
+			bool result = true;
+			Type[] publicTypes = type.GetNestedTypes();
+			foreach (Type possibleSyncType in publicTypes) {
+				Msg(possibleSyncType.Name);
+				if (possibleSyncType.IsGenericType && possibleSyncType.Name == "Sync") {
+					result &= CanSyncBeRendered(possibleSyncType);
+					if (!result) {
+						break;
+					}
+				}
+			}
+			return result;
+		}
+
+		private static bool CanSyncBeRendered(Type type, string path = ".") {
 			if (typeChecking(type)) {
 				return true;
 			}
 			if (type.IsNullable()) {
 				FieldInfo valueField = type.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
-				return InspectorRecursionLimiter.CanBeRendered(valueField.FieldType, path);
+				return InspectorRecursionLimiter.CanSyncBeRendered(valueField.FieldType, path);
 			}
 			//I'm not sure if this multithreading helps, but it probably does.
 			int result = 1;
@@ -118,7 +133,7 @@ public class HostCrashGuard : ResoniteMod {
 			}
 
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, (path + f.Name + "."))) {
+				if (!InspectorRecursionLimiter.CanSyncBeRendered(f.FieldType, (path + f.Name + "."))) {
 					return false;
 				}
 			}
