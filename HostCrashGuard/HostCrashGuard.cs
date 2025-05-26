@@ -56,21 +56,28 @@ public class HostCrashGuard : ResoniteMod {
 			for (int i = 0; i < worker.SyncMemberCount; i++) {
 				ISyncMember syncMember = worker.GetSyncMember(i);
 				if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
-
+					Msg(syncMember.GetType().Name);
 					IField? field = syncMember as IField;
 					if (field == null) {
 						Msg("Returned due to null");
 						return;
 					}
-					Msg(field.GetType().Name);
 
-					bool flag = field.ValueType.IsMatrixType();
+					bool flag = false;
+					Msg(field.GetType().Name);
+					ISyncDelegate? syncDelegate = field as ISyncDelegate;
+					ISyncRef? syncRef = field as ISyncRef;
+					AssetRef<ITexture2D>? texRef = field as AssetRef<ITexture2D>;
+					flag |= texRef != null;
+					flag |= syncDelegate != null;
+					flag |= syncRef != null;
+					flag |= field.ValueType.IsMatrixType();
 					flag |= field.ValueType.IsSphericalHarmonicsType();
 					if (flag) {
 						Msg("Returned due to flag");
 						return;
 					}
-					
+
 
 					if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
 						__result = null;
