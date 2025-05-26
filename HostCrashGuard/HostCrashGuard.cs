@@ -83,18 +83,9 @@ public class HostCrashGuard : ResoniteMod {
 									Msg(field.GetType().Name);
 									return;
 								}
-							} else {
-								Msg("Skipped due to flag");
-								//return;
 							}
-						} else {
-							Msg("Skipped due to null field");
-							//return;
 						}
 					}
-				} else {
-					Msg("Skipped due to null syncmember");
-					//return;
 				}
 
 			}
