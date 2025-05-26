@@ -9,9 +9,6 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Threading;
-using static FrooxEngine.OVRLipSyncInterface;
-using System.Collections.Generic;
-using System.Xml.Linq;
 
 namespace HostCrashGuard;
 
@@ -53,9 +50,7 @@ public class HostCrashGuard : ResoniteMod {
 				Msg("Component is null, returning");
 				return;
 			}
-			Msg("Component is named \"", component.Name, "\"");
-			Msg("component has ", component.SyncMemberCount, " sync members");
-			//InitializeSyncMembers
+
 			Traverse.Create(component).Method("InitializeSyncMembers").GetValue();
 
 			for (int i = 0; i < component.SyncMemberCount; i++) {//this pyramid / arrowhead mess below should probably be cleaned up eventually.
@@ -63,11 +58,9 @@ public class HostCrashGuard : ResoniteMod {
 				ISyncMember syncMember = component.GetSyncMember(i);
 				if (syncMember is not null) {
 					if (component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
-						Msg(syncMember.GetType().Name);
 						IField? field = syncMember as IField;
 						if (field is not null) {
 							bool flag = false;
-							Msg(field.GetType().Name);
 							ISyncDelegate? syncDelegate = field as ISyncDelegate;
 							ISyncRef? syncRef = field as ISyncRef;
 							AssetRef<ITexture2D>? texRef = field as AssetRef<ITexture2D>;
@@ -79,15 +72,12 @@ public class HostCrashGuard : ResoniteMod {
 							if (flag is false) {
 								if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
 									__result = null;
-									Msg("Decided type was invalid.");
-									Msg(field.GetType().Name);
 									return;
 								}
 							}
 						}
 					}
 				}
-
 			}
 		}
 
