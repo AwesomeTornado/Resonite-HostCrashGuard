@@ -55,48 +55,47 @@ public class HostCrashGuard : ResoniteMod {
 			}
 			Msg("Component is named \"", component.Name, "\"");
 			Msg("component has ", component.SyncMemberCount, " sync members");
-			
 
-			for (int i = 0; i < component.SyncMemberCount; i++) {
+
+			for (int i = 0; i < component.SyncMemberCount; i++) {//this pyramid / arrowhead mess below should probably be cleaned up eventually.
 				Msg(i);
 				ISyncMember syncMember = component.GetSyncMember(i);
-				if (syncMember is null) {
-					Msg("Returned due to null syncmember");
+				if (syncMember is not null) {
+					if (component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
+						Msg(syncMember.GetType().Name);
+						IField? field = syncMember as IField;
+						if (field is not null) {
+							bool flag = false;
+							Msg(field.GetType().Name);
+							ISyncDelegate? syncDelegate = field as ISyncDelegate;
+							ISyncRef? syncRef = field as ISyncRef;
+							AssetRef<ITexture2D>? texRef = field as AssetRef<ITexture2D>;
+							flag |= texRef != null;
+							flag |= syncDelegate != null;
+							flag |= syncRef != null;
+							flag |= field.ValueType.IsMatrixType();
+							flag |= field.ValueType.IsSphericalHarmonicsType();
+							if (flag is false) {
+								if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
+									__result = null;
+									Msg("Decided type was invalid.");
+									Msg(field.GetType().Name);
+									return;
+								}
+							} else {
+								Msg("Skipped due to flag");
+								return;
+							}
+						} else {
+							Msg("Skipped due to null field");
+							return;
+						}
+					}
+				} else {
+					Msg("Skipped due to null syncmember");
 					return;
 				}
-				if (component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
-					Msg(syncMember.GetType().Name);
-					IField? field = syncMember as IField;
-					if (field == null) {
-						Msg("Returned due to null field");
-						return;
-					}
 
-					bool flag = false;
-					Msg(field.GetType().Name);
-					ISyncDelegate? syncDelegate = field as ISyncDelegate;
-					ISyncRef? syncRef = field as ISyncRef;
-					AssetRef<ITexture2D>? texRef = field as AssetRef<ITexture2D>;
-					flag |= texRef != null;
-					flag |= syncDelegate != null;
-					flag |= syncRef != null;
-					flag |= field.ValueType.IsMatrixType();
-					flag |= field.ValueType.IsSphericalHarmonicsType();
-					if (flag) {
-						Msg("Returned due to flag");
-						return;
-					}
-
-
-					if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
-						__result = null;
-						Msg("Decided type was invalid.");
-						Msg(field.GetType().Name);
-						return;
-					}
-					Msg(field.GetType().Name);
-
-				}
 			}
 		}
 
