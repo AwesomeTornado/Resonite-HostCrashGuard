@@ -55,12 +55,12 @@ public class HostCrashGuard : ResoniteMod {
 			}
 			Msg("Component is named \"", component.Name, "\"");
 			Msg("component has ", component.SyncMemberCount, " sync members");
-
+			//InitializeSyncMembers
+			Traverse.Create(component).Method("InitializeSyncMembers");
 
 			for (int i = 0; i < component.SyncMemberCount; i++) {//this pyramid / arrowhead mess below should probably be cleaned up eventually.
 				Msg(i);
 				ISyncMember syncMember = component.GetSyncMember(i);
-				Msg(syncMember.GetType().Name);
 				if (syncMember is not null) {
 					if (component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
 						Msg(syncMember.GetType().Name);
