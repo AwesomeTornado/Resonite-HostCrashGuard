@@ -47,13 +47,12 @@ public class HostCrashGuard : ResoniteMod {
 				return;
 			}
 
-
-			IWorldElement? worldElement = __result as IWorldElement;
-			if (worldElement is null) {
-				Msg("Returned due to null WorldElement");
+			IWorker InterfaceWorker = TypeManager.Instantiate(__result);
+			Worker? worker = InterfaceWorker as Worker;
+			if (worker is null) {
+				Msg("Worker is null, returning");
 				return;
 			}
-			Worker worker = worldElement.FindNearestParent<Worker>();
 			for (int i = 0; i < worker.SyncMemberCount; i++) {
 				ISyncMember syncMember = worker.GetSyncMember(i);
 				if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
@@ -83,6 +82,10 @@ public class HostCrashGuard : ResoniteMod {
 
 				}
 			}
+		}
+
+		private static void test(Worker worker) {
+
 		}
 	}
 
