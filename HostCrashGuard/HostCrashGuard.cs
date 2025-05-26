@@ -47,19 +47,23 @@ public class HostCrashGuard : ResoniteMod {
 				return;
 			}
 
-			IWorker InterfaceWorker = TypeManager.Instantiate(__result);
-			Worker? worker = InterfaceWorker as Worker;
-			if (worker is null) {
-				Msg("Worker is null, returning");
+			//IWorker InterfaceWorker = TypeManager.Instantiate(__result);
+			Component component = (Component)((object)TypeManager.Instantiate(__result));
+			if (component is null) {
+				Msg("Component is null, returning");
 				return;
 			}
-			for (int i = 0; i < worker.SyncMemberCount; i++) {
-				ISyncMember syncMember = worker.GetSyncMember(i);
-				if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
+			for (int i = 0; i < component.SyncMemberCount; i++) {
+				ISyncMember syncMember = component.GetSyncMember(i);
+				if (syncMember is null) {
+					Msg("Returned due to null syncmember");
+					return;
+				}
+				if (component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
 					Msg(syncMember.GetType().Name);
 					IField? field = syncMember as IField;
 					if (field == null) {
-						Msg("Returned due to null");
+						Msg("Returned due to null field");
 						return;
 					}
 
