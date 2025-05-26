@@ -9,6 +9,9 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Threading;
+using static FrooxEngine.OVRLipSyncInterface;
+using System.Collections.Generic;
+using System.Xml.Linq;
 
 namespace HostCrashGuard;
 
@@ -43,11 +46,32 @@ public class HostCrashGuard : ResoniteMod {
 			if (__result is null || !Config.GetValue(ComponentPatchesEnabled)) {
 				return;
 			}
-			Type[] genericMembers = __result.GetGenericArguments();
-			foreach (Type type in genericMembers) {
-				if (InspectorRecursionLimiter.CanTypeBeRendered(type) is false) {
-					__result = null;
-					return;
+
+
+			IWorldElement? worldElement = __result as IWorldElement;
+			if (worldElement is null) {
+				return;
+			}
+			Worker worker = worldElement.FindNearestParent<Worker>();
+			for (int i = 0; i < worker.SyncMemberCount; i++) {
+				ISyncMember syncMember = worker.GetSyncMember(i);
+				if (worker.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
+
+					IField? field = syncMember as IField;
+					if (field == null) {
+						return;
+					}
+
+					bool flag = field.ValueType.IsMatrixType();
+					flag |= field.ValueType.IsSphericalHarmonicsType();
+					if (flag) {
+						return;
+					}
+
+					if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
+						__result = null;
+						return;
+					}
 				}
 			}
 		}
@@ -100,20 +124,12 @@ public class HostCrashGuard : ResoniteMod {
 
 		public static bool CanTypeBeRendered(Type type) {
 			bool result = true;
-			Type[] publicTypes = type.GetNestedTypes();
-			foreach (Type possibleSyncType in publicTypes) {
-				Msg(possibleSyncType.Name);
-				if (possibleSyncType.IsGenericType && possibleSyncType.Name == "Sync") {
-					result &= CanSyncBeRendered(possibleSyncType);
-					if (!result) {
-						break;
-					}
-				}
-			}
+
+
 			return result;
 		}
 
-		private static bool CanSyncBeRendered(Type type, string path = ".") {
+		public static bool CanSyncBeRendered(Type type, string path = ".") {
 			if (typeChecking(type)) {
 				return true;
 			}
