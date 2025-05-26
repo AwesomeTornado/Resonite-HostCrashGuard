@@ -13,7 +13,7 @@ using System.Threading;
 namespace HostCrashGuard;
 
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "2.4.0"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "2.5.0"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
@@ -67,7 +67,7 @@ public class HostCrashGuard : ResoniteMod {
 				flag |= component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() is not null;
 				//the field.valuetypes get checked below to ensure that they don't get called when field is null.
 				if (flag is false && !field.ValueType.IsMatrixType() && !field.ValueType.IsSphericalHarmonicsType()) {
-					if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
+					if (InspectorRecursionLimiter.CanBeRendered(field.GetType()) is false) {
 						__result = null;
 						return;
 					}
@@ -103,14 +103,13 @@ public class HostCrashGuard : ResoniteMod {
 			if (!Config.GetValue(ComponentPatchesEnabled)) {
 				return true;
 			}
-			if (CanSyncBeRendered(type, path + ".") is false) {
+			if (CanBeRendered(type, path + ".") is false) {
 				ui.Text("HostCrashGuard stopped this from rendering. This feature can be disabled.");
 				ui.Style.MinHeight = 8f;//remove this and the two lines below if ui stuff is messed up.
 				ui.Panel();
 				ui.NestOut();
 				return false;
 			}
-
 			return true;
 		}
 
@@ -131,20 +130,13 @@ public class HostCrashGuard : ResoniteMod {
 				type.IsEnum;
 		}
 
-		public static bool CanTypeBeRendered(Type type) {
-			bool result = true;
-
-
-			return result;
-		}
-
-		public static bool CanSyncBeRendered(Type type, string path = ".") {
+		public static bool CanBeRendered(Type type, string path = ".") {
 			if (typeChecking(type)) {
 				return true;
 			}
 			if (type.IsNullable()) {
 				FieldInfo valueField = type.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
-				return InspectorRecursionLimiter.CanSyncBeRendered(valueField.FieldType, path);
+				return InspectorRecursionLimiter.CanBeRendered(valueField.FieldType, path);
 			}
 			//I'm not sure if this multithreading helps, but it probably does.
 			int result = 1;
@@ -156,9 +148,8 @@ public class HostCrashGuard : ResoniteMod {
 			if (result == 0) {
 				return false;
 			}
-
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				if (!InspectorRecursionLimiter.CanSyncBeRendered(f.FieldType, (path + f.Name + "."))) {
+				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, (path + f.Name + "."))) {
 					return false;
 				}
 			}
@@ -209,6 +200,5 @@ public class HostCrashGuard : ResoniteMod {
 				slot.LocalScale *= 0.001f;
 			});
 		}
-
 	}
 }
