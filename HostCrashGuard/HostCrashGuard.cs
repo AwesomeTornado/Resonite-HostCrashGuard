@@ -50,6 +50,7 @@ public class HostCrashGuard : ResoniteMod {
 
 			IWorldElement? worldElement = __result as IWorldElement;
 			if (worldElement is null) {
+				Msg("Returned due to null WorldElement");
 				return;
 			}
 			Worker worker = worldElement.FindNearestParent<Worker>();
@@ -59,19 +60,27 @@ public class HostCrashGuard : ResoniteMod {
 
 					IField? field = syncMember as IField;
 					if (field == null) {
+						Msg("Returned due to null");
 						return;
 					}
+					Msg(field.GetType().Name);
 
 					bool flag = field.ValueType.IsMatrixType();
 					flag |= field.ValueType.IsSphericalHarmonicsType();
 					if (flag) {
+						Msg("Returned due to flag");
 						return;
 					}
+					
 
 					if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
 						__result = null;
+						Msg("Decided type was invalid.");
+						Msg(field.GetType().Name);
 						return;
 					}
+					Msg(field.GetType().Name);
+
 				}
 			}
 		}
