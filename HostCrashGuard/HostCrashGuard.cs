@@ -44,7 +44,6 @@ public class HostCrashGuard : ResoniteMod {
 				return;
 			}
 
-			//IWorker InterfaceWorker = TypeManager.Instantiate(__result);
 			Component component = (Component)((object)TypeManager.Instantiate(__result));
 			if (component is null) {
 				Msg("Component is null, returning");
@@ -53,38 +52,32 @@ public class HostCrashGuard : ResoniteMod {
 
 			Traverse.Create(component).Method("InitializeSyncMembers").GetValue();
 
-			for (int i = 0; i < component.SyncMemberCount; i++) {//this pyramid / arrowhead mess below should probably be cleaned up eventually.
-				Msg(i);
+			for (int i = 0; i < component.SyncMemberCount; i++) {
 				ISyncMember syncMember = component.GetSyncMember(i);
-				if (syncMember is not null) {
-					if (component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() == null) {
-						IField? field = syncMember as IField;
-						if (field is not null) {
-							bool flag = false;
-							ISyncDelegate? syncDelegate = field as ISyncDelegate;
-							ISyncRef? syncRef = field as ISyncRef;
-							AssetRef<ITexture2D>? texRef = field as AssetRef<ITexture2D>;
-							flag |= texRef != null;
-							flag |= syncDelegate != null;
-							flag |= syncRef != null;
-							flag |= field.ValueType.IsMatrixType();
-							flag |= field.ValueType.IsSphericalHarmonicsType();
-							if (flag is false) {
-								if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
-									__result = null;
-									return;
-								}
-							}
-						}
+				bool flag = false;
+				IField? field = syncMember as IField;
+				ISyncDelegate? syncDelegate = field as ISyncDelegate;
+				ISyncRef? syncRef = field as ISyncRef;
+				AssetRef<ITexture2D>? texRef = field as AssetRef<ITexture2D>;
+				flag |= syncMember is null;
+				flag |= field is null;
+				flag |= texRef is not null;
+				flag |= syncDelegate is not null;
+				flag |= syncRef is not null;
+				flag |= component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() is not null;
+				//the field.valuetypes get checked below to ensure that they don't get called when field is null.
+				if (flag is false && !field.ValueType.IsMatrixType() && !field.ValueType.IsSphericalHarmonicsType()) {
+					if (InspectorRecursionLimiter.CanSyncBeRendered(field.GetType()) is false) {
+						__result = null;
+						return;
 					}
 				}
 			}
 		}
 
 		private static bool ContainsAnyGenericParameters(Type type) {
-			if (type.ContainsGenericParameters) {
+			if (type.ContainsGenericParameters)
 				return true;
-			}
 			bool containsGenerics = false;
 			foreach (Type innerType in type.GetGenericArguments()) {
 				containsGenerics |= ContainsAnyGenericParameters(innerType);
