@@ -76,9 +76,7 @@ public class HostCrashGuard : ResoniteMod {
 		}
 
 		private static bool ContainsAnyGenericParameters(Type type) {
-			//Msg(type.FullName);
 			if (type.ContainsGenericParameters) {
-				//Error(type.FullName);
 				return true;
 			}
 			bool containsGenerics = false;
