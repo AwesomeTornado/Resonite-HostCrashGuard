@@ -76,11 +76,14 @@ public class HostCrashGuard : ResoniteMod {
 		}
 
 		private static bool ContainsAnyGenericParameters(Type type) {
-			if (type.ContainsGenericParameters)
+			//Msg(type.FullName);
+			if (type.ContainsGenericParameters) {
+				//Error(type.FullName);
 				return true;
+			}
 			bool containsGenerics = false;
 			foreach (Type innerType in type.GetGenericArguments()) {
-				containsGenerics |= ContainsAnyGenericParameters(innerType);
+				containsGenerics |= !innerType.IsNullable() && ContainsAnyGenericParameters(innerType);
 			}
 			return containsGenerics;
 		}
@@ -141,7 +144,7 @@ public class HostCrashGuard : ResoniteMod {
 			//I'm not sure if this multithreading helps, but it probably does.
 			int result = 1;
 			Parallel.ForEach(type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic), (FieldInfo f) => {
-				if ((path.Length - path.Replace("." + f.Name + ".", String.Empty).Length) > 0) {
+				if ((path.Length - path.Replace("." + f.FieldType.FullName + ".", String.Empty).Length) > 0) {
 					Interlocked.CompareExchange(ref result, 0, 1);
 				}
 			});
@@ -149,7 +152,7 @@ public class HostCrashGuard : ResoniteMod {
 				return false;
 			}
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, (path + f.Name + "."))) {
+				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, (path + f.FieldType.FullName + "."))) {
 					return false;
 				}
 			}
