@@ -13,7 +13,7 @@ using System.Threading;
 namespace HostCrashGuard;
 
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "2.4.0"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "2.5.0"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
@@ -40,16 +40,50 @@ public class HostCrashGuard : ResoniteMod {
 	[HarmonyPatch(typeof(ComponentSelector), "GetCustomGenericType")]
 	class ComponentSelectorValidator {
 		private static void Postfix(ref Type? __result) {
-			if (__result is null || !Config.GetValue(ComponentPatchesEnabled)) {
+			if (__result is null || ContainsAnyGenericParameters(__result) || !Config.GetValue(ComponentPatchesEnabled)) {
 				return;
 			}
-			Type[] genericMembers = __result.GetGenericArguments();
-			foreach (Type type in genericMembers) {
-				if (InspectorRecursionLimiter.CanBeRendered(type, ".") is false) {
-					__result = null;
-					return;
+
+			Component component = (Component)((object)TypeManager.Instantiate(__result));
+			if (component is null) {
+				Msg("Component is null, returning");
+				return;
+			}
+
+			Traverse.Create(component).Method("InitializeSyncMembers").GetValue();
+
+			for (int i = 0; i < component.SyncMemberCount; i++) {
+				ISyncMember syncMember = component.GetSyncMember(i);
+				bool flag = false;
+				IField? field = syncMember as IField;
+				ISyncDelegate? syncDelegate = field as ISyncDelegate;
+				ISyncRef? syncRef = field as ISyncRef;
+				AssetRef<ITexture2D>? texRef = field as AssetRef<ITexture2D>;
+				flag |= syncMember is null;
+				flag |= field is null;
+				flag |= texRef is not null;
+				flag |= syncDelegate is not null;
+				flag |= syncRef is not null;
+				flag |= component.GetSyncMemberFieldInfo(i).GetCustomAttribute<HideInInspectorAttribute>() is not null;
+				//the field.valuetypes get checked below to ensure that they don't get called when field is null.
+				if (flag is false && !field.ValueType.IsMatrixType() && !field.ValueType.IsSphericalHarmonicsType()) {
+					if (InspectorRecursionLimiter.CanBeRendered(field.GetType()) is false) {
+						__result = null;
+						return;
+					}
 				}
 			}
+		}
+
+		private static bool ContainsAnyGenericParameters(Type type) {
+			if (type.ContainsGenericParameters) {
+				return true;
+			}
+			bool containsGenerics = false;
+			foreach (Type innerType in type.GetGenericArguments()) {
+				containsGenerics |= !innerType.IsNullable() && ContainsAnyGenericParameters(innerType);
+			}
+			return containsGenerics;
 		}
 	}
 
@@ -77,7 +111,6 @@ public class HostCrashGuard : ResoniteMod {
 				ui.NestOut();
 				return false;
 			}
-
 			return true;
 		}
 
@@ -109,16 +142,15 @@ public class HostCrashGuard : ResoniteMod {
 			//I'm not sure if this multithreading helps, but it probably does.
 			int result = 1;
 			Parallel.ForEach(type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic), (FieldInfo f) => {
-				if ((path.Length - path.Replace("." + f.Name + ".", String.Empty).Length) > 0) {
+				if ((path.Length - path.Replace("." + f.FieldType.FullName + ".", String.Empty).Length) > 0) {
 					Interlocked.CompareExchange(ref result, 0, 1);
 				}
 			});
 			if (result == 0) {
 				return false;
 			}
-
 			foreach (FieldInfo f in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, (path + f.Name + "."))) {
+				if (!InspectorRecursionLimiter.CanBeRendered(f.FieldType, (path + f.FieldType.FullName + "."))) {
 					return false;
 				}
 			}
@@ -169,6 +201,5 @@ public class HostCrashGuard : ResoniteMod {
 				slot.LocalScale *= 0.001f;
 			});
 		}
-
 	}
 }
