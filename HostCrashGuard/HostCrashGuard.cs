@@ -23,9 +23,6 @@ public class HostCrashGuard : ResoniteMod {
 	private static readonly ModConfigurationKey<bool> NetworkPatchesEnabled = new ModConfigurationKey<bool>("Network Patches", "Enable all network crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> HostDisconnectEnabled = new ModConfigurationKey<bool>("Host Disconnects", "Enable additional checks to prevent worlds from closing.", () => true);
-
-	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<bool> ComponentPatchesEnabled = new ModConfigurationKey<bool>("Component Patches", "Enable all component related crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
