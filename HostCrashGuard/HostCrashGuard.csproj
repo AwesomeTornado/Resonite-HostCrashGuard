@@ -3,7 +3,7 @@
 		<RootNamespace>HostCrashGuard</RootNamespace>
 		<AssemblyName>HostCrashGuard</AssemblyName>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-		<TargetFramework>net472</TargetFramework>
+		<TargetFramework>net9</TargetFramework>
 		<FileAlignment>512</FileAlignment>
 		<LangVersion>10.0</LangVersion>
 		<Nullable>enable</Nullable>
@@ -26,21 +26,21 @@
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="HarmonyLib">
-			<HintPath>$(ResonitePath)rml_libs\0Harmony.dll</HintPath>
+			<HintPath>$(ResonitePath)rml_libs\0Harmony-NET9.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="FrooxEngine">
-			<HintPath>$(ResonitePath)Resonite_Data\Managed\FrooxEngine.dll</HintPath>
+			<HintPath>$(ResonitePath)\FrooxEngine.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="Elements.Core">
-			<HintPath>$(ResonitePath)Resonite_Data\Managed\Elements.Core.dll</HintPath>
+			<HintPath>$(ResonitePath)\Elements.Core.dll</HintPath>
 		</Reference>
 		<Reference Include="LiteNetLib">
-			<HintPath>$(ResonitePath)Resonite_Data\Managed\LiteNetLib.dll</HintPath>
+			<HintPath>$(ResonitePath)\LiteNetLib.dll</HintPath>
 		</Reference>
 		<Reference Include="ProtoFlux.Nodes.FrooxEngine">
-			<HintPath>$(ResonitePath)Resonite_Data\Managed\ProtoFlux.Nodes.FrooxEngine.dll</HintPath>
+			<HintPath>$(ResonitePath)\ProtoFlux.Nodes.FrooxEngine.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 
