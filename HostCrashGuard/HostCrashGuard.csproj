@@ -26,7 +26,7 @@
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="HarmonyLib">
-			<HintPath>$(ResonitePath)rml_libs\0Harmony-NET9.dll</HintPath>
+			<HintPath>$(ResonitePath)rml_libs\0Harmony.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="FrooxEngine">
