@@ -1,19 +1,27 @@
-using FrooxEngine;
-using HarmonyLib;
-using ResoniteModLoader;
-using System.Net.Sockets;
-using Elements.Core;
-using LiteNetLib;
-using FrooxEngine.UIX;
 using System;
+using System.Net.Sockets;
 using System.Reflection;
-using System.Threading.Tasks;
 using System.Threading;
+using System.Threading.Tasks;
+
+using Elements.Core;
+
+using FrooxEngine;
+using FrooxEngine.ProtoFlux;
+using FrooxEngine.UIX;
+
+using HarmonyLib;
+
+using LiteNetLib;
+
+using ProtoFlux.Runtimes.Execution;
+
+using ResoniteModLoader;
 
 namespace HostCrashGuard;
 
 public class HostCrashGuard : ResoniteMod {
-	internal const string VERSION_CONSTANT = "3.0.0"; //Changing the version here updates it in all locations needed
+	internal const string VERSION_CONSTANT = "3.1.0"; //Changing the version here updates it in all locations needed
 	public override string Name => "HostCrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
@@ -26,6 +34,9 @@ public class HostCrashGuard : ResoniteMod {
 	private static readonly ModConfigurationKey<bool> ComponentPatchesEnabled = new ModConfigurationKey<bool>("Component Patches", "Enable all component related crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
+	private static readonly ModConfigurationKey<bool> ProtoFluxEventCrashes = new ModConfigurationKey<bool>("ProtoFlux Event Patches", "Add C# Exception handling to protoflux events to prevent crashes", () => true);
+
+	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<float2> DialogSize = new ModConfigurationKey<float2>("Popup Size", "Changes the size of the network error popup.", () => new float2(300f, 250f));
 
 	private static ModConfiguration Config;
@@ -35,6 +46,34 @@ public class HostCrashGuard : ResoniteMod {
 		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
 		harmony.PatchAll();
 		Msg("HostCrashGuard loaded.");
+	}
+
+	[HarmonyPatch(typeof(ProtoFluxNodeGroup), "RunNodeEvents")]
+	class SyncElementExceptionsPatch {
+		private static bool Prefix(ProtoFluxNodeGroup __instance) {
+			if (!Config.GetValue(ProtoFluxEventCrashes)) {
+				return true;
+			}
+			//Msg("A");
+			Traverse traverse = Traverse.Create(__instance);
+			ExecutionRuntime<FrooxEngineContext> executionRuntime = traverse.Field("executionRuntime").GetValue<ExecutionRuntime<FrooxEngineContext>>();
+			//Msg("B");
+			try {
+				if (__instance.IsValid && !__instance.ShouldBeRemoved) {
+					traverse.Field("_eventRegistered").SetValue(false);
+					FrooxEngineContext context = __instance.World.ProtoFlux.BorrowContext(__instance);
+					__instance.EventDispatcher.DispatchEvents(executionRuntime, context);
+					__instance.World.ProtoFlux.ReturnContext(ref context);
+					//Msg("B.C");
+				}
+				//Msg("C");
+			} catch (Exception e) {
+				Error("Exception thrown during ProtoFluxNodeGroup RunNodeEvents. This is likely indicitave of unstable or problematic ProtoFlux that needs to be fixed. Execution halted.");
+				Warn("Exception details: " + e);
+			}
+			//Msg("E");
+			return false;
+		}
 	}
 
 	[HarmonyPatch(typeof(ComponentSelector), "GetCustomGenericType")]
