@@ -1,20 +1,21 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Elements.Core;
 
 using FrooxEngine;
-using FrooxEngine.ProtoFlux;
 using FrooxEngine.UIX;
 
 using HarmonyLib;
 
 using LiteNetLib;
 
-using ProtoFlux.Runtimes.Execution;
+using Renderite.Shared;
 
 using ResoniteModLoader;
 
@@ -34,12 +35,14 @@ public class CrashGuard : ResoniteMod {
 	private static readonly ModConfigurationKey<bool> ComponentPatchesEnabled = new ModConfigurationKey<bool>("Component Patches", "Enable all component related crash fixes of this mod.", () => true);
 
 	[AutoRegisterConfigKey]
-	private static readonly ModConfigurationKey<bool> ProtoFluxEventCrashes = new ModConfigurationKey<bool>("ProtoFlux Event Patches", "Add C# Exception handling to protoflux events to prevent crashes", () => true);
+	private static readonly ModConfigurationKey<bool> DisableExceptions = new ModConfigurationKey<bool>("Disable Exceptions", "Remove all exceptions from FrooxEngine. This is a drastic measure, but can prevent crashes.", () => true);
 
 	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<float2> DialogSize = new ModConfigurationKey<float2>("Popup Size", "Changes the size of the network error popup.", () => new float2(300f, 250f));
 
 	private static ModConfiguration Config;
+
+	public const string exceptionWarningMessage = "CrashGuard prevented an exception. This might cause issues for users not using CrashGuard if left unsolved.";
 
 	public override void OnEngineInit() {
 		Config = GetConfiguration();
@@ -48,30 +51,144 @@ public class CrashGuard : ResoniteMod {
 		Msg("CrashGuard loaded.");
 	}
 
-	[HarmonyPatch(typeof(ProtoFluxNodeGroup), "RunNodeEvents")]
-	class SyncElementExceptionsPatch {
-		private static bool Prefix(ProtoFluxNodeGroup __instance) {
-			if (!Config.GetValue(ProtoFluxEventCrashes)) {
+	[HarmonyPatch(typeof(Engine), "RequestShutdown")]
+	class preventEngineShutdownOnUnityCrash {
+		private static bool Prefix(Engine __instance) {
+			if (!__instance.RenderSystem.RendererProcess.HasExited) {
+				//This force crash was not caused by renderer restart.
+				Msg("fatal error, sorry :(");
+				//TODO! Make this not prevent all crashes
+				//return true;
+			}
+			Msg("Renderer error, recover?");
+			return false;
+		}
+
+	}
+
+	[HarmonyPatch(typeof(Engine), "ForceCrash")]
+	class restartUnityPatch {
+		private static bool Prefix(Engine __instance) {
+			if (!__instance.RenderSystem.RendererProcess.HasExited) {
+				//This force crash was not caused by renderer restart.
 				return true;
 			}
-			//Msg("A");
 			Traverse traverse = Traverse.Create(__instance);
-			ExecutionRuntime<FrooxEngineContext> executionRuntime = traverse.Field("executionRuntime").GetValue<ExecutionRuntime<FrooxEngineContext>>();
-			//Msg("B");
-			try {
-				if (__instance.IsValid && !__instance.ShouldBeRemoved) {
-					traverse.Field("_eventRegistered").SetValue(false);
-					FrooxEngineContext context = __instance.World.ProtoFlux.BorrowContext(__instance);
-					__instance.EventDispatcher.DispatchEvents(executionRuntime, context);
-					__instance.World.ProtoFlux.ReturnContext(ref context);
-					//Msg("B.C");
-				}
-				//Msg("C");
-			} catch (Exception e) {
-				Error("Exception thrown during ProtoFluxNodeGroup RunNodeEvents. This is likely indicitave of unstable or problematic ProtoFlux that needs to be fixed. Execution halted.");
-				Warn("Exception details: " + e);
+			Error("Unity crash detected, attmpting to start new unity process.");
+			traverse.Field("RenderSystem").SetValue(new RenderSystem());
+			//bool useRenderer, HeadOutputDevice headOutputDevice, Guid uniqueSessionId, Bitmap2D rendererIcon = null, SplashScreenDescriptor splashScreenOverride = null)
+			__instance.RenderSystem.Initialize(__instance, __instance.InputInterface.HeadOutputDevice, __instance.UniqueSessionID, true, null, null, __instance.InitProgress);
+			//__instance.RenderSystem.InitializeRenderSystem(true, __instance.InputInterface.HeadOutputDevice, __instance.UniqueSessionID, null, null).RunSynchronously();
+			
+			//traverse.Method("InitializeRenderSystem", 
+			//	true,
+			//	__instance.InputInterface.HeadOutputDevice,
+			//	__instance.UniqueSessionID,
+			//	null,
+			//	null).GetValue<Task>().RunSynchronously();
+			Error("Render system initialized, finishing engine initialization...");
+			__instance.RenderSystem.FinishInitialize().RunSynchronously();
+			Error("Render system restarted successfully. ");
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(SyncElement), "BeginModification")]
+	class RemoveSyncElementExceptions {
+		private static bool Prefix(SyncElement __instance, ref bool __result) {
+			if (!Config.GetValue(DisableExceptions)) {
+				return true;
 			}
-			//Msg("E");
+			Traverse traverse = Traverse.Create(__instance);
+			///////////////////////////////////////////////////////////////////
+			/* Read
+			 * ModificationBlocked
+			 * modificationLevel
+			 */
+			bool ModificationBlocked = traverse.Field("ModificationBlocked").GetValue<bool>();
+			ushort modificationLevel = traverse.Field("modificationLevel").GetValue<ushort>();
+			uint _flags = traverse.Field("_flags").GetValue<uint>();
+			///////////////////////////////////////////////////////////////////
+			if (ModificationBlocked) {
+				Error(exceptionWarningMessage);
+				Error("Modification of the element is currently blocked, cannot modify");
+			}
+
+			if (modificationLevel == 0) {
+				if (__instance.IsDisposed) {
+					string message = "Cannot modify disposed elements! Hierachy: \n" + __instance.ParentHierarchyToString();
+					Error(exceptionWarningMessage);
+					Error(message);
+					__result = false;
+				}
+
+				__instance.World.ConnectorManager.ThreadCheck();
+				if (__instance.IsDriven && __instance.ActiveLink.WasLinkGranted && (_flags & 0x620) == 0 && !__instance.ActiveLink.IsModificationAllowed) {
+					SyncElement syncElement = __instance.ActiveLink as SyncElement;
+					string text = null;
+					if (!__instance.DriveErrorLogged) {
+						text = $"The {__instance.Name} ({__instance.ReferenceID} - {__instance.GetType()}) element on {__instance.Component?.GetType()} ({__instance.Component?.ReferenceID}) is currently being driven by {__instance.ActiveLink?.Name} ({__instance.ActiveLink.ReferenceID} - {__instance.ActiveLink?.GetType()}) on {syncElement?.Component?.GetType()} ({syncElement?.Component?.ReferenceID})" + " and can be modified only through the drive reference.";
+					}
+
+					if (text != null) {
+						__instance.DriveErrorLogged = true;
+						Error(exceptionWarningMessage);
+						Error(text);
+					}
+
+					__result = false;
+				}
+			}
+
+			traverse.Field("modificationLevel").SetValue((ushort)(modificationLevel + 1));
+			__result = true;
+			///////////////////////////////////////////////////////////////////
+
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(ReferenceController), "GetObjectOrThrow")]
+	class RemoveReferenceControllerExceptions {
+
+		private static bool Prefix(ReferenceController __instance, ref IWorldElement __result, in RefID reference) {
+			if (!Config.GetValue(DisableExceptions)) {
+				return true;
+			}
+			if (reference == RefID.Null) {
+				Error(exceptionWarningMessage);
+				Error("Cannot request null reference ID!");
+			}
+			__result = Traverse.Create(__instance).Field("objects").GetValue<Dictionary<RefID, IWorldElement>>()[reference];
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(UserRoot), nameof(UserRoot.GetControllerSlot))]
+	class RemoveUserRootControllerExceptions {
+		private static bool Prefix(UserRoot __instance, Chirality node) {
+			if (!Config.GetValue(DisableExceptions)) {
+				return true;
+			}
+			if (node == Chirality.Left || node == Chirality.Right) {
+				return true;
+			}
+			Error(exceptionWarningMessage);
+			Error("Invalid node: " + node.ToString());
+			return false;
+		}
+	}
+	[HarmonyPatch(typeof(UserRoot), nameof(UserRoot.GetHandSlot))]
+	class RemoveUserRootHandExceptions {
+		private static bool Prefix(UserRoot __instance, Chirality chirality) {
+			if (!Config.GetValue(DisableExceptions)) {
+				return true;
+			}
+			if (chirality == Chirality.Left || chirality == Chirality.Right) {
+				return true;
+			}
+			Error(exceptionWarningMessage);
+			Error("Invalid chirality: " + chirality.ToString());
 			return false;
 		}
 	}
@@ -220,7 +337,7 @@ public class CrashGuard : ResoniteMod {
 
 			w.RunSynchronously(() => {
 				Slot slot = w.RootSlot.LocalUserSpace.AddSlot("Crash Guard Dialog", false);
-				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Host Crash Guard", Config.GetValue(DialogSize), pinButton: false);
+				UIBuilder uIBuilder = RadiantUI_Panel.SetupPanel(slot, "Crash Guard", Config.GetValue(DialogSize), pinButton: false);
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;

@@ -37,8 +37,11 @@
 		<Reference Include="Elements.Core">
 			<HintPath>$(ResonitePath)\Elements.Core.dll</HintPath>
 		</Reference>
-		<Reference Include="ProtoFlux.Core">
-			<HintPath>$(ResonitePath)\ProtoFlux.Core.dll</HintPath>
+		<Reference Include="Renderite.Shared">
+			<HintPath>$(ResonitePath)\Renderite.Shared.dll</HintPath>
+		</Reference>
+		<Reference Include="Elements.Assets">
+			<HintPath>$(ResonitePath)\Elements.Assets.dll</HintPath>
 		</Reference>
 		<Reference Include="LiteNetLib">
 			<HintPath>$(ResonitePath)\LiteNetLib.dll</HintPath>
