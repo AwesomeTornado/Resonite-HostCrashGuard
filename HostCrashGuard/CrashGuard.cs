@@ -18,14 +18,14 @@ using ProtoFlux.Runtimes.Execution;
 
 using ResoniteModLoader;
 
-namespace HostCrashGuard;
+namespace CrashGuard;
 
-public class HostCrashGuard : ResoniteMod {
+public class CrashGuard : ResoniteMod {
 	internal const string VERSION_CONSTANT = "3.1.0"; //Changing the version here updates it in all locations needed
-	public override string Name => "HostCrashGuard";
+	public override string Name => "CrashGuard";
 	public override string Author => "__Choco__";
 	public override string Version => VERSION_CONSTANT;
-	public override string Link => "https://github.com/AwesomeTornado/Resonite-HostCrashGuard";
+	public override string Link => "https://github.com/AwesomeTornado/Resonite-CrashGuard";
 
 	[AutoRegisterConfigKey]
 	private static readonly ModConfigurationKey<bool> NetworkPatchesEnabled = new ModConfigurationKey<bool>("Network Patches", "Enable all network crash fixes of this mod.", () => true);
@@ -43,9 +43,9 @@ public class HostCrashGuard : ResoniteMod {
 
 	public override void OnEngineInit() {
 		Config = GetConfiguration();
-		Harmony harmony = new Harmony("com.__Choco__.HostCrashGuard");
+		Harmony harmony = new Harmony("com.__Choco__.CrashGuard");
 		harmony.PatchAll();
-		Msg("HostCrashGuard loaded.");
+		Msg("CrashGuard loaded.");
 	}
 
 	[HarmonyPatch(typeof(ProtoFluxNodeGroup), "RunNodeEvents")]
@@ -144,7 +144,7 @@ public class HostCrashGuard : ResoniteMod {
 				return true;
 			}
 			if (CanBeRendered(type, path + ".") is false) {
-				ui.Text("HostCrashGuard stopped this from rendering. This feature can be disabled.");
+				ui.Text("CrashGuard stopped this from rendering. This feature can be disabled.");
 				ui.Style.MinHeight = 8f;//remove this and the two lines below if ui stuff is messed up.
 				ui.Panel();
 				ui.NestOut();
@@ -224,7 +224,7 @@ public class HostCrashGuard : ResoniteMod {
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;
-				uIBuilder.Text(reason + " HostCrashGuard has stopped " + world.Name + " from closing. Please save any unfinished work and close this world.");
+				uIBuilder.Text(reason + " CrashGuard has stopped " + world.Name + " from closing. Please save any unfinished work and close this world.");
 				uIBuilder.HorizontalLayout(4f);
 
 				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED)).LocalPressed +=

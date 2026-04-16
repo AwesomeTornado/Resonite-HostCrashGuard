@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<RootNamespace>HostCrashGuard</RootNamespace>
-		<AssemblyName>HostCrashGuard</AssemblyName>
+		<RootNamespace>CrashGuard</RootNamespace>
+		<AssemblyName>CrashGuard</AssemblyName>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<TargetFramework>net10.0</TargetFramework>
 		<FileAlignment>512</FileAlignment>
