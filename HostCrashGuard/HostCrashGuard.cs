@@ -224,7 +224,7 @@ public class HostCrashGuard : ResoniteMod {
 				RadiantUI_Constants.SetupEditorStyle(uIBuilder);
 				uIBuilder.VerticalLayout(4f);
 				uIBuilder.Style.MinHeight = 24f;
-				uIBuilder.Text(reason + " HostCrashGuard has stopped " + world.Name + " from closing. Please save any unfinished work and close this world.");
+				uIBuilder.Text(reason + " HostCrashGuard has stopped " + world.Name + "</closeall> from closing. Please save any unfinished work and close this world.");
 				uIBuilder.HorizontalLayout(4f);
 
 				uIBuilder.Button("Exit World", new colorX?(RadiantUI_Constants.Sub.RED)).LocalPressed +=
